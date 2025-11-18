@@ -24,22 +24,31 @@ export default function XiaowangPostPerformancePage() {
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-purple-100 to-pink-100">
       {/* Header */}
       <nav className="bg-white/80 backdrop-blur-xl border-b border-purple-200/30 sticky top-0 z-50 shadow-lg shadow-purple-500/10">
-        <div className="w-full px-8">
-          <div className="relative flex items-center h-24 py-4">
-            <div className="flex items-center space-x-4">
+        <div className="w-full px-4 md:px-8">
+          <div className="max-w-7xl mx-auto flex flex-wrap items-center gap-3 md:gap-4 py-3 md:py-4">
+            {/* 左侧：Logo */}
+            <div className="flex items-center space-x-4 flex-shrink-0">
               <img
                 src="/LifeX_logo.png"
                 alt="LifeX Logo"
                 className="h-12 w-auto"
               />
             </div>
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <h1 className="text-4xl font-black bg-gradient-to-r from-[#751FAE] to-[#EF3C99] bg-clip-text text-transparent font-montserrat">Post Performance Analysis</h1>
-              <p className="text-base text-purple-600 mt-1 font-montserrat font-light">Xiaowang Marketing Insights</p>
+
+            {/* 中间：标题 */}
+            <div className="flex-1 min-w-[220px] text-center">
+              <h1 className="text-2xl md:text-4xl font-black bg-gradient-to-r from-[#751FAE] to-[#EF3C99] bg-clip-text text-transparent font-montserrat">
+                Post Performance Analysis
+              </h1>
+              <p className="text-xs md:text-base text-purple-600 mt-1 font-montserrat font-light">
+                Xiaowang Marketing Insights
+              </p>
             </div>
-            <div className="ml-auto flex items-center gap-3">
+
+            {/* 右侧：按钮组 */}
+            <div className="ml-auto flex items-center gap-3 flex-shrink-0">
               <Button
-                onClick={() => window.location.href = '/information-hub'}
+                onClick={() => (window.location.href = '/information-hub')}
                 variant="outline"
                 className="flex items-center gap-2"
               >
@@ -47,7 +56,7 @@ export default function XiaowangPostPerformancePage() {
                 Back to Hub
               </Button>
               <Button
-                onClick={() => window.location.href = '/'}
+                onClick={() => (window.location.href = '/')}
                 variant="outline"
                 className="flex items-center gap-2"
               >

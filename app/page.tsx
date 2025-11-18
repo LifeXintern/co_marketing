@@ -1479,6 +1479,27 @@ export default function Home() {
               />
 
               <div className="flex items-center space-x-2 border-l border-gray-300 pl-4">
+
+                {/* 澳洲Broker小王咨询上传按钮（已隐藏，仅保留代码备份） */}
+                {/*
+                <button
+                  type="button"
+                  onClick={() => {
+                    console.log('XiaoWang button clicked');
+                    setUploadAccountType('xiaowang');
+                    setShowUpload(true);
+                  }}
+                  className="flex items-center gap-1 px-3 py-2 text-xs text-gray-600 hover:text-gray-600 hover:bg-gray-50 transition-all duration-200 rounded-md border border-transparent hover:border-gray-200"
+                  title="Upload Australia Broker XiaoWang Consultation Data"
+                  style={{ pointerEvents: 'auto' }}
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                  <span className="font-medium">小王咨询</span>
+                </button>
+                */}
+
                 {/* 小王Broker数据上传按钮 */}
                 <button
                   type="button"
@@ -1496,7 +1517,7 @@ export default function Home() {
                   <span className="font-medium">小王Broker</span>
                 </button>
 
-                {/* LifeCar澳洲Broker上传按钮 */}
+                {/* LifeCar 澳洲Broker 上传按钮 */}
                 <button
                   type="button"
                   onClick={() => {
@@ -1531,12 +1552,13 @@ export default function Home() {
                   <span className="font-medium">All in One</span>
                   <span className="text-xs bg-white/20 px-1 rounded text-white">测试</span>
                 </button>
+
               </div>
             </div>
 
             {/* 中间：标题区域 */}
             <div className="flex-1 min-w-[220px] text-center">
-              <h1 className="text-2xl md:text-4xl font-black bg-gradient-to-r from-[#751FAE] to-[#EF3C99] bg-clip-text text-transparent font-montserrat">
+              <h1 className="text-3xl md:text-5xl font-black bg-gradient-to-r from-[#751FAE] to-[#EF3C99] bg-clip-text text-transparent font-montserrat">
                 Marketing Dashboard
               </h1>
               <p className="text-xs md:text-base text-purple-600 mt-1 font-montserrat font-light">
