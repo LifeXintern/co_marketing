@@ -1468,38 +1468,17 @@ export default function Home() {
           </div>
         </div>
         )}
-        <div className="w-full px-8">
-          <div className="relative flex items-center h-24 py-4">
-            <div className="flex items-center space-x-4 z-50 relative">
+        <div className="w-full px-4 md:px-8">
+          <div className="max-w-7xl mx-auto flex flex-wrap items-center gap-3 md:gap-4 py-3 md:py-4">
+            {/* 左侧：Logo + 上传按钮组 */}
+            <div className="flex items-center gap-4 flex-shrink-0">
               <img 
                 src="/LifeX_logo.png" 
                 alt="LifeX Logo" 
                 className="h-12 w-auto"
               />
-              
-              {/* 上传按钮组 - 放在logo右侧 */}
-              <div className="flex items-center space-x-2 border-l border-gray-300 pl-4 z-[200] relative">
-                {/* 澳洲Broker小王咨询上传按钮 - 已隐藏但保留代码以备将来使用 */}
-                {/* 注意：如需重新启用小王咨询上传按钮，取消下面代码的注释即可 */}
-                {/*
-                <button
-                  type="button"
-                  onClick={() => {
-                    console.log('XiaoWang button clicked');
-                    setUploadAccountType('xiaowang');
-                    setShowUpload(true);
-                  }}
-                  className="flex items-center gap-1 px-3 py-2 text-xs text-gray-600 hover:text-gray-600 hover:bg-gray-50 transition-all duration-200 rounded-md border border-transparent hover:border-gray-200"
-                  title="Upload Australia Broker XiaoWang Consultation Data"
-                  style={{ pointerEvents: 'auto' }}
-                >
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                  </svg>
-                  <span className="font-medium">小王咨询</span>
-                </button>
-                */}
 
+              <div className="flex items-center space-x-2 border-l border-gray-300 pl-4">
                 {/* 小王Broker数据上传按钮 */}
                 <button
                   type="button"
@@ -1554,11 +1533,19 @@ export default function Home() {
                 </button>
               </div>
             </div>
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <h1 className="text-4xl font-black bg-gradient-to-r from-[#751FAE] to-[#EF3C99] bg-clip-text text-transparent font-montserrat">Marketing Dashboard</h1>
-              <p className="text-base text-purple-600 mt-1 font-montserrat font-light">Real-time analytics & insights</p>
+
+            {/* 中间：标题区域 */}
+            <div className="flex-1 min-w-[220px] text-center">
+              <h1 className="text-2xl md:text-4xl font-black bg-gradient-to-r from-[#751FAE] to-[#EF3C99] bg-clip-text text-transparent font-montserrat">
+                Marketing Dashboard
+              </h1>
+              <p className="text-xs md:text-base text-purple-600 mt-1 font-montserrat font-light">
+                Real-time analytics & insights
+              </p>
             </div>
-            <div className="ml-auto flex items-center space-x-3 z-50 relative">
+
+            {/* 右侧：账号选择 + 按钮组 */}
+            <div className="ml-auto flex items-center space-x-3 flex-shrink-0">
               <AccountSwitcher
                 onAccountChange={handleAccountChange}
                 defaultAccount={selectedAccount}
@@ -1575,7 +1562,7 @@ export default function Home() {
               </button>
               <button
                 onClick={handleFullscreen}
-                className="flex items-center justify-center w-8 h-8 text-gray-700 bg-white/90 backdrop-blur-sm border border-purple-200 rounded hover:border-purple-300 hover:bg-purple-50 transition-all duration-200 shadow-sm cursor-pointer z-50 relative"
+                className="flex items-center justify-center w-8 h-8 text-gray-700 bg-white/90 backdrop-blur-sm border border-purple-200 rounded hover:border-purple-300 hover:bg-purple-50 transition-all duration-200 shadow-sm cursor-pointer"
                 title="Toggle Fullscreen"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1585,6 +1572,7 @@ export default function Home() {
             </div>
           </div>
         </div>
+
       </nav>
       
       {/* 主内容区域 */}
