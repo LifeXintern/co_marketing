@@ -1469,7 +1469,7 @@ export default function Home() {
         </div>
         )}
         <div className="w-full px-4 md:px-8">
-          <div className="max-w-7xl mx-auto flex flex-wrap items-center gap-3 md:gap-4 py-3 md:py-4">
+          <div className="max-w-7xl mx-auto flex flex-wrap items-center gap-3 md:gap-4 py-2.5 md:py-3">
             {/* 左侧：Logo + 上传按钮组 */}
             <div className="flex items-center gap-4 flex-shrink-0">
               <img 
@@ -1558,10 +1558,10 @@ export default function Home() {
 
             {/* 中间：标题区域 */}
             <div className="flex-1 min-w-[220px] text-center">
-              <h1 className="text-3xl md:text-5xl font-black bg-gradient-to-r from-[#751FAE] to-[#EF3C99] bg-clip-text text-transparent font-montserrat">
+              <h1 className="text-2xl md:text-4xl font-black bg-gradient-to-r from-[#751FAE] to-[#EF3C99] bg-clip-text text-transparent font-montserrat leading-tight">
                 Marketing Dashboard
               </h1>
-              <p className="text-xs md:text-base text-purple-600 mt-1 font-montserrat font-light">
+              <p className="text-xs md:text-sm text-purple-600 mt-0.5 font-montserrat font-light">
                 Real-time analytics & insights
               </p>
             </div>
