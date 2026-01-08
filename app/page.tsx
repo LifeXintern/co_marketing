@@ -2519,186 +2519,13 @@ export default function Home() {
               </div>
             )}
 
-            {/* 小王测试概览统计 - LifeCar样式 */}
+
+            {/* ================= Overview – One Row / Five Cards ================= */}
             {!xiaowangTestLoading && xiaowangTestData?.rawData && (
               <div className="max-w-7xl mx-auto mb-6">
-                {/* First row - 4 cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-                  {/* Views 卡片 */}
-                  <Card className="bg-white/95 backdrop-blur-xl shadow-lg border border-gray-200/50 glass-card-hover relative">
-                    <CardContent className="p-6 text-center">
-                      <div className="text-sm font-bold text-gray-700 mb-2">Views</div>
-                      <div className="text-3xl font-black bg-gradient-to-r from-purple-700 to-pink-600 bg-clip-text text-transparent mb-1">
-                        {(() => {
-                          // 使用原始数据，根据时间筛选
-                          let rawData = xiaowangTestData.rawData;
-                          if (startDate && endDate) {
-                            rawData = xiaowangTestData.rawData.filter((item: any) => {
-                              return item.date >= startDate && item.date <= endDate;
-                            });
-                          }
-                          const totalClicks = rawData.reduce((sum: number, item: any) => sum + (item.clicks || 0), 0);
-                          return totalClicks.toLocaleString();
-                        })()}
-                      </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
 
-                      {/* 与平均值对比 */}
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-center gap-1">
-                          {(() => {
-                            // 获取当前时间段的原始数据
-                            let currentRawData = xiaowangTestData.rawData;
-                            if (startDate && endDate) {
-                              currentRawData = xiaowangTestData.rawData.filter((item: any) => {
-                                return item.date >= startDate && item.date <= endDate;
-                              });
-                            }
-
-                            const isNoTimeFilter = !startDate || !endDate;
-                            if (isNoTimeFilter) {
-                              return <span className="text-gray-400 text-sm font-bold flex items-center">▲ 0.0% <span className="text-xs text-gray-500 ml-1">vs Avg</span></span>;
-                            }
-
-                            // 计算当前时间段的总点击数和天数
-                            const totalClicks = currentRawData.reduce((sum: number, item: any) => sum + (item.clicks || 0), 0);
-                            const currentDays = currentRawData.length;
-                            const currentAvgClicks = currentDays > 0 ? totalClicks / currentDays : 0;
-
-                            // 计算所有时间的平均每日点击数（与Cost Analysis相同逻辑）
-                            const allTimeRawData = xiaowangTestData.rawData;
-                            const allTimeTotalClicks = allTimeRawData.reduce((sum: number, item: any) => sum + (item.clicks || 0), 0);
-                            const allTimeDays = allTimeRawData.length;
-                            const allTimeAvgClicks = allTimeDays > 0 ? allTimeTotalClicks / allTimeDays : 0;
-
-                            const clicksDifference = currentAvgClicks - allTimeAvgClicks;
-                            const clicksDifferencePercent = allTimeAvgClicks > 0 ? ((currentAvgClicks - allTimeAvgClicks) / allTimeAvgClicks) * 100 : 0;
-
-                            return (
-                              <>
-                                <span className={`${clicksDifference >= 0 ? 'text-green-600' : 'text-red-600'} text-sm font-bold flex items-center`}>
-                                  {clicksDifference >= 0 ? '▲' : '▼'}
-                                  {Math.abs(clicksDifferencePercent).toFixed(1)}%
-                                </span>
-                                <span className="text-xs text-gray-500">vs Avg</span>
-                              </>
-                            );
-                          })()}
-                        </div>
-                        <div className="text-xs text-gray-600">
-                          {(() => {
-                            const currentPeriodLength = filteredXiaowangTestData.dailyData.length;
-                            const allTimePeriodAvgClicks = xiaowangTestData?.dailyData && xiaowangTestData.dailyData.length > 0 && currentPeriodLength > 0 ?
-                              xiaowangTestData.dailyData.reduce((sum, item) => sum + (item.clicks || 0), 0) / Math.ceil(xiaowangTestData.dailyData.length / currentPeriodLength) : 0;
-                            return `${currentPeriodLength}-day Avg: ${allTimePeriodAvgClicks.toFixed(0)} views`;
-                          })()}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Likes 卡片 */}
-                  <Card className="bg-white/95 backdrop-blur-xl shadow-lg border border-gray-200/50 glass-card-hover relative">
-                    <CardContent className="p-6 text-center">
-                      <div className="text-sm font-bold text-gray-700 mb-2">Likes</div>
-                      <div className="text-3xl font-black bg-gradient-to-r from-purple-700 to-pink-600 bg-clip-text text-transparent mb-1">
-                        {(() => {
-                          const totalLikes = filteredXiaowangTestData.dailyData.reduce((sum, item) => sum + (item.likes || 0), 0);
-                          return totalLikes.toLocaleString();
-                        })()}
-                      </div>
-
-                      {/* 与平均值对比 */}
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-center gap-1">
-                          {(() => {
-                            const currentPeriodLength = filteredXiaowangTestData.dailyData.length;
-                            const totalLikes = filteredXiaowangTestData.dailyData.reduce((sum, item) => sum + (item.likes || 0), 0);
-                            const isNoTimeFilter = !startDate || !endDate || filteredXiaowangTestData.dailyData.length === xiaowangTestData?.dailyData?.length;
-
-                            if (isNoTimeFilter) {
-                              return <span className="text-gray-400 text-sm font-bold flex items-center">▲ 0.0% <span className="text-xs text-gray-500 ml-1">vs Avg</span></span>;
-                            }
-
-                            const allTimePeriodAvgLikes = xiaowangTestData?.dailyData && xiaowangTestData.dailyData.length > 0 && currentPeriodLength > 0 ?
-                              xiaowangTestData.dailyData.reduce((sum, item) => sum + (item.likes || 0), 0) / Math.ceil(xiaowangTestData.dailyData.length / currentPeriodLength) : 0;
-                            const likesDifference = totalLikes - allTimePeriodAvgLikes;
-                            const likesDifferencePercent = allTimePeriodAvgLikes > 0 ? ((totalLikes - allTimePeriodAvgLikes) / allTimePeriodAvgLikes) * 100 : 0;
-
-                            return (
-                              <>
-                                <span className={`${likesDifference >= 0 ? 'text-green-600' : 'text-red-600'} text-sm font-bold flex items-center`}>
-                                  {likesDifference >= 0 ? '▲' : '▼'}
-                                  {Math.abs(likesDifferencePercent).toFixed(1)}%
-                                </span>
-                                <span className="text-xs text-gray-500">vs Avg</span>
-                              </>
-                            );
-                          })()}
-                        </div>
-                        <div className="text-xs text-gray-600">
-                          {(() => {
-                            const currentPeriodLength = filteredXiaowangTestData.dailyData.length;
-                            const allTimePeriodAvgLikes = xiaowangTestData?.dailyData && xiaowangTestData.dailyData.length > 0 && currentPeriodLength > 0 ?
-                              xiaowangTestData.dailyData.reduce((sum, item) => sum + (item.likes || 0), 0) / Math.ceil(xiaowangTestData.dailyData.length / currentPeriodLength) : 0;
-                            return `${currentPeriodLength}-day Avg: ${allTimePeriodAvgLikes.toFixed(0)} likes`;
-                          })()}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* New Followers 卡片 */}
-                  <Card className="bg-white/95 backdrop-blur-xl shadow-lg border border-gray-200/50 glass-card-hover relative">
-                    <CardContent className="p-6 text-center">
-                      <div className="text-sm font-bold text-gray-700 mb-2">New Followers</div>
-                      <div className="text-3xl font-black bg-gradient-to-r from-purple-700 to-pink-600 bg-clip-text text-transparent mb-1">
-                        {(() => {
-                          const totalFollowers = filteredXiaowangTestData.dailyData.reduce((sum, item) => sum + (item.followers || 0), 0);
-                          return totalFollowers.toLocaleString();
-                        })()}
-                      </div>
-
-                      {/* 与平均值对比 */}
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-center gap-1">
-                          {(() => {
-                            const currentPeriodLength = filteredXiaowangTestData.dailyData.length;
-                            const totalFollowers = filteredXiaowangTestData.dailyData.reduce((sum, item) => sum + (item.followers || 0), 0);
-                            const isNoTimeFilter = !startDate || !endDate || filteredXiaowangTestData.dailyData.length === xiaowangTestData?.dailyData?.length;
-
-                            if (isNoTimeFilter) {
-                              return <span className="text-gray-400 text-sm font-bold flex items-center">▲ 0.0% <span className="text-xs text-gray-500 ml-1">vs Avg</span></span>;
-                            }
-
-                            const allTimePeriodAvgFollowers = xiaowangTestData?.dailyData && xiaowangTestData.dailyData.length > 0 && currentPeriodLength > 0 ?
-                              xiaowangTestData.dailyData.reduce((sum, item) => sum + (item.followers || 0), 0) / Math.ceil(xiaowangTestData.dailyData.length / currentPeriodLength) : 0;
-                            const followersDifference = totalFollowers - allTimePeriodAvgFollowers;
-                            const followersDifferencePercent = allTimePeriodAvgFollowers > 0 ? ((totalFollowers - allTimePeriodAvgFollowers) / allTimePeriodAvgFollowers) * 100 : 0;
-
-                            return (
-                              <>
-                                <span className={`${followersDifference >= 0 ? 'text-green-600' : 'text-red-600'} text-sm font-bold flex items-center`}>
-                                  {followersDifference >= 0 ? '▲' : '▼'}
-                                  {Math.abs(followersDifferencePercent).toFixed(1)}%
-                                </span>
-                                <span className="text-xs text-gray-500">vs Avg</span>
-                              </>
-                            );
-                          })()}
-                        </div>
-                        <div className="text-xs text-gray-600">
-                          {(() => {
-                            const currentPeriodLength = filteredXiaowangTestData.dailyData.length;
-                            const allTimePeriodAvgFollowers = xiaowangTestData?.dailyData && xiaowangTestData.dailyData.length > 0 && currentPeriodLength > 0 ?
-                              xiaowangTestData.dailyData.reduce((sum, item) => sum + (item.followers || 0), 0) / Math.ceil(xiaowangTestData.dailyData.length / currentPeriodLength) : 0;
-                            return `${currentPeriodLength}-day Avg: ${allTimePeriodAvgFollowers.toFixed(0)} followers`;
-                          })()}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Leads 卡片 */}
+                  {/* ================= Leads（保持原有逻辑） ================= */}
                   <Card className="bg-white/95 backdrop-blur-xl shadow-lg border border-gray-200/50 glass-card-hover relative">
                     <CardContent className="p-6 text-center">
                       <div className="text-sm font-bold text-gray-700 mb-2">Leads</div>
@@ -2833,11 +2660,8 @@ export default function Home() {
                       </div>
                     </CardContent>
                   </Card>
-                </div>
 
-                {/* Second row - 5 cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-                  {/* Cost 卡片 */}
+                  {/* ================= Cost（保持原有逻辑） ================= */}
                   <Card className="bg-white/95 backdrop-blur-xl shadow-lg border border-gray-200/50 glass-card-hover relative">
                     <CardContent className="p-6 text-center">
                       <div className="text-sm font-bold text-gray-700 mb-2">Cost</div>
@@ -2888,190 +2712,7 @@ export default function Home() {
                     </CardContent>
                   </Card>
 
-                  {/* Cost per View 卡片 */}
-                  <Card className="bg-white/95 backdrop-blur-xl shadow-lg border border-gray-200/50 glass-card-hover relative">
-                    <CardContent className="p-6 text-center">
-                      <div className="text-sm font-bold text-gray-700 mb-2">Cost per View</div>
-                      <div className="text-3xl font-black bg-gradient-to-r from-purple-700 to-pink-600 bg-clip-text text-transparent mb-1">
-                        ${(() => {
-                          const totalSpend = filteredXiaowangTestData.dailyData.reduce((sum, item) => sum + (item.cost || 0), 0);
-                          const totalClicks = filteredXiaowangTestData.dailyData.reduce((sum, item) => sum + (item.clicks || 0), 0);
-                          const cpc = totalClicks > 0 ? totalSpend / totalClicks : 0;
-                          return cpc.toFixed(2);
-                        })()}
-                      </div>
-
-                      {/* 与平均值对比 */}
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-center gap-1">
-                          {(() => {
-                            const currentPeriodLength = filteredXiaowangTestData.dailyData.length;
-                            const totalSpend = filteredXiaowangTestData.dailyData.reduce((sum, item) => sum + (item.cost || 0), 0);
-                            const totalClicks = filteredXiaowangTestData.dailyData.reduce((sum, item) => sum + (item.clicks || 0), 0);
-                            const cpc = totalClicks > 0 ? totalSpend / totalClicks : 0;
-                            const isNoTimeFilter = !startDate || !endDate || filteredXiaowangTestData.dailyData.length === xiaowangTestData?.dailyData?.length;
-
-                            if (isNoTimeFilter) {
-                              return <span className="text-gray-400 text-sm font-bold flex items-center">▲ 0.0% <span className="text-xs text-gray-500 ml-1">vs Avg</span></span>;
-                            }
-
-                            const avgSpendForCPC = xiaowangTestData?.dailyData && xiaowangTestData.dailyData.length > 0 && currentPeriodLength > 0 ?
-                              xiaowangTestData.dailyData.reduce((sum, item) => sum + (item.cost || 0), 0) / Math.floor(xiaowangTestData.dailyData.length / currentPeriodLength) : 0;
-                            const avgClicksForCPC = xiaowangTestData?.dailyData && xiaowangTestData.dailyData.length > 0 && currentPeriodLength > 0 ?
-                              xiaowangTestData.dailyData.reduce((sum, item) => sum + (item.clicks || 0), 0) / Math.floor(xiaowangTestData.dailyData.length / currentPeriodLength) : 0;
-                            const allTimePeriodAvgCPC = avgClicksForCPC > 0 ? avgSpendForCPC / avgClicksForCPC : 0;
-                            const cpcDifference = cpc - allTimePeriodAvgCPC;
-                            const cpcDifferencePercent = allTimePeriodAvgCPC > 0 ? ((cpc - allTimePeriodAvgCPC) / allTimePeriodAvgCPC) * 100 : 0;
-
-                            return (
-                              <>
-                                <span className={`${cpcDifference >= 0 ? 'text-red-600' : 'text-green-600'} text-sm font-bold flex items-center`}>
-                                  {cpcDifference >= 0 ? '▲' : '▼'}
-                                  {Math.abs(cpcDifferencePercent).toFixed(1)}%
-                                </span>
-                                <span className="text-xs text-gray-500">vs Avg</span>
-                              </>
-                            );
-                          })()}
-                        </div>
-                        <div className="text-xs text-gray-600">
-                          {(() => {
-                            const currentPeriodLength = filteredXiaowangTestData.dailyData.length;
-                            const avgSpendForCPC = xiaowangTestData?.dailyData && xiaowangTestData.dailyData.length > 0 && currentPeriodLength > 0 ?
-                              xiaowangTestData.dailyData.reduce((sum, item) => sum + (item.cost || 0), 0) / Math.floor(xiaowangTestData.dailyData.length / currentPeriodLength) : 0;
-                            const avgClicksForCPC = xiaowangTestData?.dailyData && xiaowangTestData.dailyData.length > 0 && currentPeriodLength > 0 ?
-                              xiaowangTestData.dailyData.reduce((sum, item) => sum + (item.clicks || 0), 0) / Math.floor(xiaowangTestData.dailyData.length / currentPeriodLength) : 0;
-                            const allTimePeriodAvgCPC = avgClicksForCPC > 0 ? avgSpendForCPC / avgClicksForCPC : 0;
-                            return `${currentPeriodLength}-day Avg: $${allTimePeriodAvgCPC.toFixed(2)}`;
-                          })()}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Cost per Like 卡片 */}
-                  <Card className="bg-white/95 backdrop-blur-xl shadow-lg border border-gray-200/50 glass-card-hover relative">
-                    <CardContent className="p-6 text-center">
-                      <div className="text-sm font-bold text-gray-700 mb-2">Cost per Like</div>
-                      <div className="text-3xl font-black bg-gradient-to-r from-purple-700 to-pink-600 bg-clip-text text-transparent mb-1">
-                        ${(() => {
-                          const totalSpend = filteredXiaowangTestData.dailyData.reduce((sum, item) => sum + (item.cost || 0), 0);
-                          const totalLikes = filteredXiaowangTestData.dailyData.reduce((sum, item) => sum + (item.likes || 0), 0);
-                          const costPerLike = totalLikes > 0 ? totalSpend / totalLikes : 0;
-                          return costPerLike.toFixed(2);
-                        })()}
-                      </div>
-
-                      {/* 与平均值对比 */}
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-center gap-1">
-                          {(() => {
-                            const currentPeriodLength = filteredXiaowangTestData.dailyData.length;
-                            const totalSpend = filteredXiaowangTestData.dailyData.reduce((sum, item) => sum + (item.cost || 0), 0);
-                            const totalLikes = filteredXiaowangTestData.dailyData.reduce((sum, item) => sum + (item.likes || 0), 0);
-                            const costPerLike = totalLikes > 0 ? totalSpend / totalLikes : 0;
-                            const isNoTimeFilter = !startDate || !endDate || filteredXiaowangTestData.dailyData.length === xiaowangTestData?.dailyData?.length;
-
-                            if (isNoTimeFilter) {
-                              return <span className="text-gray-400 text-sm font-bold flex items-center">▲ 0.0% <span className="text-xs text-gray-500 ml-1">vs Avg</span></span>;
-                            }
-
-                            const avgSpendForCPL = xiaowangTestData?.dailyData && xiaowangTestData.dailyData.length > 0 && currentPeriodLength > 0 ?
-                              xiaowangTestData.dailyData.reduce((sum, item) => sum + (item.cost || 0), 0) / Math.floor(xiaowangTestData.dailyData.length / currentPeriodLength) : 0;
-                            const avgLikesForCPL = xiaowangTestData?.dailyData && xiaowangTestData.dailyData.length > 0 && currentPeriodLength > 0 ?
-                              xiaowangTestData.dailyData.reduce((sum, item) => sum + (item.likes || 0), 0) / Math.floor(xiaowangTestData.dailyData.length / currentPeriodLength) : 0;
-                            const allTimePeriodAvgCPL = avgLikesForCPL > 0 ? avgSpendForCPL / avgLikesForCPL : 0;
-                            const costPerLikeDifference = costPerLike - allTimePeriodAvgCPL;
-                            const costPerLikeDifferencePercent = allTimePeriodAvgCPL > 0 ? ((costPerLike - allTimePeriodAvgCPL) / allTimePeriodAvgCPL) * 100 : 0;
-
-                            return (
-                              <>
-                                <span className={`${costPerLikeDifference >= 0 ? 'text-red-600' : 'text-green-600'} text-sm font-bold flex items-center`}>
-                                  {costPerLikeDifference >= 0 ? '▲' : '▼'}
-                                  {Math.abs(costPerLikeDifferencePercent).toFixed(1)}%
-                                </span>
-                                <span className="text-xs text-gray-500">vs Avg</span>
-                              </>
-                            );
-                          })()}
-                        </div>
-                        <div className="text-xs text-gray-600">
-                          {(() => {
-                            const currentPeriodLength = filteredXiaowangTestData.dailyData.length;
-                            const avgSpendForCPL = xiaowangTestData?.dailyData && xiaowangTestData.dailyData.length > 0 && currentPeriodLength > 0 ?
-                              xiaowangTestData.dailyData.reduce((sum, item) => sum + (item.cost || 0), 0) / Math.floor(xiaowangTestData.dailyData.length / currentPeriodLength) : 0;
-                            const avgLikesForCPL = xiaowangTestData?.dailyData && xiaowangTestData.dailyData.length > 0 && currentPeriodLength > 0 ?
-                              xiaowangTestData.dailyData.reduce((sum, item) => sum + (item.likes || 0), 0) / Math.floor(xiaowangTestData.dailyData.length / currentPeriodLength) : 0;
-                            const allTimePeriodAvgCPL = avgLikesForCPL > 0 ? avgSpendForCPL / avgLikesForCPL : 0;
-                            return `${currentPeriodLength}-day Avg: $${allTimePeriodAvgCPL.toFixed(2)}`;
-                          })()}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Cost per Follower 卡片 */}
-                  <Card className="bg-white/95 backdrop-blur-xl shadow-lg border border-gray-200/50 glass-card-hover relative">
-                    <CardContent className="p-6 text-center">
-                      <div className="text-sm font-bold text-gray-700 mb-2">Cost per Follower</div>
-                      <div className="text-3xl font-black bg-gradient-to-r from-purple-700 to-pink-600 bg-clip-text text-transparent mb-1">
-                        ${(() => {
-                          const totalSpend = filteredXiaowangTestData.dailyData.reduce((sum, item) => sum + (item.cost || 0), 0);
-                          const totalFollowers = filteredXiaowangTestData.dailyData.reduce((sum, item) => sum + (item.followers || 0), 0);
-                          const costPerFollower = totalFollowers > 0 ? totalSpend / totalFollowers : 0;
-                          return costPerFollower.toFixed(2);
-                        })()}
-                      </div>
-
-                      {/* 与平均值对比 */}
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-center gap-1">
-                          {(() => {
-                            const currentPeriodLength = filteredXiaowangTestData.dailyData.length;
-                            const totalSpend = filteredXiaowangTestData.dailyData.reduce((sum, item) => sum + (item.cost || 0), 0);
-                            const totalFollowers = filteredXiaowangTestData.dailyData.reduce((sum, item) => sum + (item.followers || 0), 0);
-                            const costPerFollower = totalFollowers > 0 ? totalSpend / totalFollowers : 0;
-                            const isNoTimeFilter = !startDate || !endDate || filteredXiaowangTestData.dailyData.length === xiaowangTestData?.dailyData?.length;
-
-                            if (isNoTimeFilter) {
-                              return <span className="text-gray-400 text-sm font-bold flex items-center">▲ 0.0% <span className="text-xs text-gray-500 ml-1">vs Avg</span></span>;
-                            }
-
-                            const avgSpendForCPF = xiaowangTestData?.dailyData && xiaowangTestData.dailyData.length > 0 && currentPeriodLength > 0 ?
-                              xiaowangTestData.dailyData.reduce((sum, item) => sum + (item.cost || 0), 0) / Math.floor(xiaowangTestData.dailyData.length / currentPeriodLength) : 0;
-                            const avgFollowersForCPF = xiaowangTestData?.dailyData && xiaowangTestData.dailyData.length > 0 && currentPeriodLength > 0 ?
-                              xiaowangTestData.dailyData.reduce((sum, item) => sum + (item.followers || 0), 0) / Math.floor(xiaowangTestData.dailyData.length / currentPeriodLength) : 0;
-                            const allTimePeriodAvgCPF = avgFollowersForCPF > 0 ? avgSpendForCPF / avgFollowersForCPF : 0;
-                            const costPerFollowerDifference = costPerFollower - allTimePeriodAvgCPF;
-                            const costPerFollowerDifferencePercent = allTimePeriodAvgCPF > 0 ? ((costPerFollower - allTimePeriodAvgCPF) / allTimePeriodAvgCPF) * 100 : 0;
-
-                            return (
-                              <>
-                                <span className={`${costPerFollowerDifference >= 0 ? 'text-red-600' : 'text-green-600'} text-sm font-bold flex items-center`}>
-                                  {costPerFollowerDifference >= 0 ? '▲' : '▼'}
-                                  {Math.abs(costPerFollowerDifferencePercent).toFixed(1)}%
-                                </span>
-                                <span className="text-xs text-gray-500">vs Avg</span>
-                              </>
-                            );
-                          })()}
-                        </div>
-                        <div className="text-xs text-gray-600">
-                          {(() => {
-                            const currentPeriodLength = filteredXiaowangTestData.dailyData.length;
-                            const avgSpendForCPF = xiaowangTestData?.dailyData && xiaowangTestData.dailyData.length > 0 && currentPeriodLength > 0 ?
-                              xiaowangTestData.dailyData.reduce((sum, item) => sum + (item.cost || 0), 0) / Math.floor(xiaowangTestData.dailyData.length / currentPeriodLength) : 0;
-                            const avgFollowersForCPF = xiaowangTestData?.dailyData && xiaowangTestData.dailyData.length > 0 && currentPeriodLength > 0 ?
-                              xiaowangTestData.dailyData.reduce((sum, item) => sum + (item.followers || 0), 0) / Math.floor(xiaowangTestData.dailyData.length / currentPeriodLength) : 0;
-                            const allTimePeriodAvgCPF = avgFollowersForCPF > 0 ? avgSpendForCPF / avgFollowersForCPF : 0;
-                            return `${currentPeriodLength}-day Avg: $${allTimePeriodAvgCPF.toFixed(2)}`;
-                          })()}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Cost per Lead 卡片 */}
+                  {/* ================= Cost per Lead（保持原有逻辑） ================= */}
                   <Card className="bg-white/95 backdrop-blur-xl shadow-lg border border-gray-200/50 glass-card-hover relative">
                     <CardContent className="p-6 text-center">
                       <div className="text-sm font-bold text-gray-700 mb-2">Cost per Lead</div>
@@ -3202,6 +2843,40 @@ export default function Home() {
                       </div>
                     </CardContent>
                   </Card>
+                  {/* ================= Daily Avg Leads（样式占位） ================= */}
+                  <Card className="bg-white/95 backdrop-blur-xl shadow-lg border border-gray-200/50 glass-card-hover relative">
+                    <CardContent className="p-6 text-center">
+                      <div className="text-sm font-bold text-gray-700 mb-2">
+                        Daily Avg Leads
+                      </div>
+
+                      <div className="text-3xl font-black bg-gradient-to-r from-purple-700 to-pink-600 bg-clip-text text-transparent mb-1">
+                        --
+                      </div>
+
+                      <div className="text-xs text-gray-500">
+                        Historical Avg: --
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* ================= Red Message Conv Rate（样式占位） ================= */}
+                  <Card className="bg-white/95 backdrop-blur-xl shadow-lg border border-gray-200/50 glass-card-hover relative">
+                    <CardContent className="p-6 text-center">
+                      <div className="text-sm font-bold text-gray-700 mb-2">
+                        Red Message Conv Rate
+                      </div>
+
+                      <div className="text-3xl font-black bg-gradient-to-r from-purple-700 to-pink-600 bg-clip-text text-transparent mb-1">
+                        --
+                      </div>
+
+                      <div className="text-xs text-gray-500">
+                        Avg: --
+                      </div>
+                    </CardContent>
+                  </Card>
+
                 </div>
               </div>
             )}
