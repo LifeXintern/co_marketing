@@ -2851,11 +2851,224 @@ export default function Home() {
                       </div>
 
                       <div className="text-3xl font-black bg-gradient-to-r from-purple-700 to-pink-600 bg-clip-text text-transparent mb-1">
-                        --
+                        {(() => {
+                          if (!brokerDataJson || brokerDataJson.length === 0) return '0.00';
+
+                          // Helper: extract date from item (inline)
+                          const extractDate = (item: any): string | null => {
+                            if (!item || typeof item !== 'object') return null;
+                            let dateValue: string | null = null;
+                            const dateFields = ['Date', 'date', '时间', 'Date ', 'date '];
+                            for (const field of dateFields) {
+                              if (item[field] !== undefined && item[field] !== null && item[field] !== '') {
+                                if (typeof item[field] === 'number') {
+                                  const excelDate = new Date((item[field] - 25569) * 86400 * 1000);
+                                  if (!isNaN(excelDate.getTime())) {
+                                    dateValue = excelDate.toISOString().split('T')[0];
+                                    break;
+                                  }
+                                } else if (typeof item[field] === 'string') {
+                                  const parsedDate = new Date(item[field]);
+                                  if (!isNaN(parsedDate.getTime())) {
+                                    dateValue = parsedDate.toISOString().split('T')[0];
+                                    break;
+                                  }
+                                }
+                              }
+                            }
+                            return dateValue;
+                          };
+
+                          // Helper: calculate historical daily avg (inline)
+                          const calculateHistoricalAvg = (): number => {
+                            const weeklyLeadsMap = new Map<string, number>();
+                            brokerDataJson.forEach((item: any) => {
+                              const dateStr = extractDate(item);
+                              if (!dateStr) return;
+                              const date = new Date(dateStr);
+                              if (isNaN(date.getTime())) return;
+                              const yearStart = new Date(date.getFullYear(), 0, 1);
+                              const dayOfYear = Math.floor((date.getTime() - yearStart.getTime()) / (1000 * 60 * 60 * 24));
+                              const weekNumber = Math.ceil((dayOfYear + yearStart.getDay() + 1) / 7);
+                              const weekKey = `${date.getFullYear()}-W${weekNumber}`;
+                              weeklyLeadsMap.set(weekKey, (weeklyLeadsMap.get(weekKey) || 0) + 1);
+                            });
+                            if (weeklyLeadsMap.size === 0) return 0;
+                            const weeklyDailyAverages: number[] = [];
+                            weeklyLeadsMap.forEach((leadsCount) => {
+                              weeklyDailyAverages.push(leadsCount / 7);
+                            });
+                            const sum = weeklyDailyAverages.reduce((acc, val) => acc + val, 0);
+                            return weeklyDailyAverages.length > 0 ? sum / weeklyDailyAverages.length : 0;
+                          };
+
+                          // If no time filter, show historical avg
+                          if (!startDate || !endDate) {
+                            const historicalAvg = calculateHistoricalAvg();
+                            return historicalAvg.toFixed(2);
+                          }
+
+                          // Calculate current period leads
+                          const filteredLeads = brokerDataJson.filter((item: any) => {
+                            const dateValue = extractDate(item);
+                            return dateValue && dateValue >= startDate && dateValue <= endDate;
+                          });
+
+                          // Calculate days
+                          const startDateObj = new Date(startDate);
+                          const endDateObj = new Date(endDate);
+                          const timeDiff = endDateObj.getTime() - startDateObj.getTime();
+                          const days = Math.ceil(timeDiff / (1000 * 60 * 60 * 24)) + 1;
+
+                          // Current period daily avg
+                          const currentDailyAvg = days > 0 ? filteredLeads.length / days : 0;
+                          return currentDailyAvg.toFixed(2);
+                        })()}
                       </div>
 
-                      <div className="text-xs text-gray-500">
-                        Historical Avg: --
+                      {/* 与平均值对比 */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-center gap-1">
+                          {(() => {
+                            if (!brokerDataJson || brokerDataJson.length === 0) {
+                              return <span className="text-gray-400 text-sm font-bold flex items-center">▲ 0.0% <span className="text-xs text-gray-500 ml-1">vs Avg</span></span>;
+                            }
+
+                            const isNoTimeFilter = !startDate || !endDate;
+                            if (isNoTimeFilter) {
+                              return <span className="text-gray-400 text-sm font-bold flex items-center">▲ 0.0% <span className="text-xs text-gray-500 ml-1">vs Avg</span></span>;
+                            }
+
+                            // Helper: extract date (inline duplicate for this IIFE)
+                            const extractDate = (item: any): string | null => {
+                              if (!item || typeof item !== 'object') return null;
+                              let dateValue: string | null = null;
+                              const dateFields = ['Date', 'date', '时间', 'Date ', 'date '];
+                              for (const field of dateFields) {
+                                if (item[field] !== undefined && item[field] !== null && item[field] !== '') {
+                                  if (typeof item[field] === 'number') {
+                                    const excelDate = new Date((item[field] - 25569) * 86400 * 1000);
+                                    if (!isNaN(excelDate.getTime())) {
+                                      dateValue = excelDate.toISOString().split('T')[0];
+                                      break;
+                                    }
+                                  } else if (typeof item[field] === 'string') {
+                                    const parsedDate = new Date(item[field]);
+                                    if (!isNaN(parsedDate.getTime())) {
+                                      dateValue = parsedDate.toISOString().split('T')[0];
+                                      break;
+                                    }
+                                  }
+                                }
+                              }
+                              return dateValue;
+                            };
+
+                            // Calculate current period daily avg
+                            const filteredLeads = brokerDataJson.filter((item: any) => {
+                              const dateValue = extractDate(item);
+                              return dateValue && dateValue >= startDate && dateValue <= endDate;
+                            });
+
+                            const startDateObj = new Date(startDate);
+                            const endDateObj = new Date(endDate);
+                            const timeDiff = endDateObj.getTime() - startDateObj.getTime();
+                            const days = Math.ceil(timeDiff / (1000 * 60 * 60 * 24)) + 1;
+                            const currentDailyAvg = days > 0 ? filteredLeads.length / days : 0;
+
+                            // Calculate historical avg (inline)
+                            const weeklyLeadsMap = new Map<string, number>();
+                            brokerDataJson.forEach((item: any) => {
+                              const dateStr = extractDate(item);
+                              if (!dateStr) return;
+                              const date = new Date(dateStr);
+                              if (isNaN(date.getTime())) return;
+                              const yearStart = new Date(date.getFullYear(), 0, 1);
+                              const dayOfYear = Math.floor((date.getTime() - yearStart.getTime()) / (1000 * 60 * 60 * 24));
+                              const weekNumber = Math.ceil((dayOfYear + yearStart.getDay() + 1) / 7);
+                              const weekKey = `${date.getFullYear()}-W${weekNumber}`;
+                              weeklyLeadsMap.set(weekKey, (weeklyLeadsMap.get(weekKey) || 0) + 1);
+                            });
+                            let historicalAvg = 0;
+                            if (weeklyLeadsMap.size > 0) {
+                              const weeklyDailyAverages: number[] = [];
+                              weeklyLeadsMap.forEach((leadsCount) => {
+                                weeklyDailyAverages.push(leadsCount / 7);
+                              });
+                              const sum = weeklyDailyAverages.reduce((acc, val) => acc + val, 0);
+                              historicalAvg = weeklyDailyAverages.length > 0 ? sum / weeklyDailyAverages.length : 0;
+                            }
+
+                            // Calculate difference
+                            const dailyAvgLeadsDiff = currentDailyAvg - historicalAvg;
+                            const dailyAvgLeadsDiffPercent = historicalAvg > 0 ? (dailyAvgLeadsDiff / historicalAvg) * 100 : 0;
+
+                            return (
+                              <>
+                                <span className={`${dailyAvgLeadsDiff >= 0 ? 'text-green-600' : 'text-red-600'} text-sm font-bold flex items-center`}>
+                                  {dailyAvgLeadsDiff >= 0 ? '▲' : '▼'}
+                                  {Math.abs(dailyAvgLeadsDiffPercent).toFixed(1)}%
+                                </span>
+                                <span className="text-xs text-gray-500">vs Avg</span>
+                              </>
+                            );
+                          })()}
+                        </div>
+                        <div className="text-xs text-gray-600">
+                          {(() => {
+                            if (!brokerDataJson || brokerDataJson.length === 0) return "No data";
+
+                            // Helper: extract date (inline duplicate for this IIFE)
+                            const extractDate = (item: any): string | null => {
+                              if (!item || typeof item !== 'object') return null;
+                              let dateValue: string | null = null;
+                              const dateFields = ['Date', 'date', '时间', 'Date ', 'date '];
+                              for (const field of dateFields) {
+                                if (item[field] !== undefined && item[field] !== null && item[field] !== '') {
+                                  if (typeof item[field] === 'number') {
+                                    const excelDate = new Date((item[field] - 25569) * 86400 * 1000);
+                                    if (!isNaN(excelDate.getTime())) {
+                                      dateValue = excelDate.toISOString().split('T')[0];
+                                      break;
+                                    }
+                                  } else if (typeof item[field] === 'string') {
+                                    const parsedDate = new Date(item[field]);
+                                    if (!isNaN(parsedDate.getTime())) {
+                                      dateValue = parsedDate.toISOString().split('T')[0];
+                                      break;
+                                    }
+                                  }
+                                }
+                              }
+                              return dateValue;
+                            };
+
+                            // Calculate historical avg (inline)
+                            const weeklyLeadsMap = new Map<string, number>();
+                            brokerDataJson.forEach((item: any) => {
+                              const dateStr = extractDate(item);
+                              if (!dateStr) return;
+                              const date = new Date(dateStr);
+                              if (isNaN(date.getTime())) return;
+                              const yearStart = new Date(date.getFullYear(), 0, 1);
+                              const dayOfYear = Math.floor((date.getTime() - yearStart.getTime()) / (1000 * 60 * 60 * 24));
+                              const weekNumber = Math.ceil((dayOfYear + yearStart.getDay() + 1) / 7);
+                              const weekKey = `${date.getFullYear()}-W${weekNumber}`;
+                              weeklyLeadsMap.set(weekKey, (weeklyLeadsMap.get(weekKey) || 0) + 1);
+                            });
+                            let historicalDailyAvgLeads = 0;
+                            if (weeklyLeadsMap.size > 0) {
+                              const weeklyDailyAverages: number[] = [];
+                              weeklyLeadsMap.forEach((leadsCount) => {
+                                weeklyDailyAverages.push(leadsCount / 7);
+                              });
+                              const sum = weeklyDailyAverages.reduce((acc, val) => acc + val, 0);
+                              historicalDailyAvgLeads = weeklyDailyAverages.length > 0 ? sum / weeklyDailyAverages.length : 0;
+                            }
+
+                            return `Historical Avg: ${historicalDailyAvgLeads.toFixed(2)} leads/day`;
+                          })()}
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
