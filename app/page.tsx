@@ -468,6 +468,7 @@ export default function Home() {
         dailyCostData: [],
         xiaowangTestData: null,
         xiaowangTestNotesData: [],
+        xiaowangMessageData: [],
         lifeCarData: [],
         lifeCarMonthlyData: [],
         lifeCarNotesData: [],
@@ -483,6 +484,7 @@ export default function Home() {
   const dailyCostDataJson = storageData.dailyCostData;
   const xiaowangTestData = storageData.xiaowangTestData;
   const xiaowangTestNotesData = storageData.xiaowangTestNotesData;
+  const xiaowangMessageData = storageData.xiaowangMessageData || [];
   const lifeCarData = storageData.lifeCarData;
   const lifeCarMonthlyData = storageData.lifeCarMonthlyData;
   const lifeCarNotesData = storageData.lifeCarNotesData;
@@ -532,6 +534,12 @@ export default function Home() {
 
   const setXiaowangTestNotesData = (data: any[]) => {
     const newData = { xiaowangTestNotesData: data };
+    sessionStorageUtils.setData(newData);
+    setStorageData(prev => ({ ...prev, ...newData }));
+  };
+
+  const setXiaowangMessageData = (data: any[]) => {
+    const newData = { xiaowangMessageData: data };
     sessionStorageUtils.setData(newData);
     setStorageData(prev => ({ ...prev, ...newData }));
   };
@@ -3073,7 +3081,7 @@ export default function Home() {
                     </CardContent>
                   </Card>
 
-                  {/* ================= Red Message Conv Rate（样式占位） ================= */}
+                  {/* ================= Red Message Conv Rate ================= */}
                   <Card className="bg-white/95 backdrop-blur-xl shadow-lg border border-gray-200/50 glass-card-hover relative">
                     <CardContent className="p-6 text-center">
                       <div className="text-sm font-bold text-gray-700 mb-2">
@@ -3081,11 +3089,168 @@ export default function Home() {
                       </div>
 
                       <div className="text-3xl font-black bg-gradient-to-r from-purple-700 to-pink-600 bg-clip-text text-transparent mb-1">
-                        --
+                        {(() => {
+                          if (!xiaowangMessageData || xiaowangMessageData.length === 0 || !brokerDataJson || brokerDataJson.length === 0) {
+                            return '--';
+                          }
+
+                          // Helper function to extract date from client_info (broker) data
+                          const extractDate = (item: any): string | null => {
+                            if (!item || typeof item !== 'object') return null;
+                            let dateValue: string | null = null;
+                            const dateFields = ['Date', 'date', '时间', '日期', 'Date ', 'date '];
+                            for (const field of dateFields) {
+                              if (item[field] !== undefined && item[field] !== null && item[field] !== '') {
+                                if (typeof item[field] === 'number') {
+                                  const excelDate = new Date((item[field] - 25569) * 86400 * 1000);
+                                  if (!isNaN(excelDate.getTime())) {
+                                    dateValue = excelDate.toISOString().split('T')[0];
+                                    break;
+                                  }
+                                } else if (typeof item[field] === 'string') {
+                                  const parsedDate = new Date(item[field]);
+                                  if (!isNaN(parsedDate.getTime())) {
+                                    dateValue = parsedDate.toISOString().split('T')[0];
+                                    break;
+                                  }
+                                }
+                              }
+                            }
+                            return dateValue;
+                          };
+
+                          // Calculate historical average
+                          const calculateHistoricalAvg = (): number => {
+                            const totalLeads = brokerDataJson.length;
+                            const totalMessages = xiaowangMessageData
+                              .reduce((sum: number, item: any) => sum + (item.conversionCount || 0), 0);
+                            if (totalMessages === 0) return 0;
+                            return (totalLeads / totalMessages) * 100;
+                          };
+
+                          // If no time filter, show historical avg
+                          if (!startDate || !endDate) {
+                            const historicalAvg = calculateHistoricalAvg();
+                            return `${historicalAvg.toFixed(1)}%`;
+                          }
+
+                          // Filter data by date range if specified
+                          // 分子 (Numerator): Leads count from client_info
+                          const totalLeads = brokerDataJson.filter((item: any) => {
+                            const dateValue = extractDate(item);
+                            return dateValue && dateValue >= startDate && dateValue <= endDate;
+                          }).length;
+
+                          // 分母 (Denominator): Sum of message counts from 小王私信
+                          const totalMessages = xiaowangMessageData
+                            .filter((item: any) => item.date && item.date >= startDate && item.date <= endDate)
+                            .reduce((sum: number, item: any) => sum + (item.conversionCount || 0), 0);
+
+                          // 边界条件：除以0检查
+                          if (totalMessages === 0) return '--';
+
+                          // 计算公式：Red Message Conv Rate = (totalLeads / totalMessages) * 100
+                          const convRate = (totalLeads / totalMessages) * 100;
+                          return `${convRate.toFixed(1)}%`;
+                        })()}
                       </div>
 
-                      <div className="text-xs text-gray-500">
-                        Avg: --
+                      {/* 与平均值对比 */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-center gap-1">
+                          {(() => {
+                            if (!xiaowangMessageData || xiaowangMessageData.length === 0 || !brokerDataJson || brokerDataJson.length === 0) {
+                              return <span className="text-gray-400 text-sm font-bold flex items-center">▲ 0.0% <span className="text-xs text-gray-500 ml-1">vs Avg</span></span>;
+                            }
+
+                            const isNoTimeFilter = !startDate || !endDate;
+                            if (isNoTimeFilter) {
+                              return <span className="text-gray-400 text-sm font-bold flex items-center">▲ 0.0% <span className="text-xs text-gray-500 ml-1">vs Avg</span></span>;
+                            }
+
+                            // Helper function to extract date from client_info (broker) data
+                            const extractDate = (item: any): string | null => {
+                              if (!item || typeof item !== 'object') return null;
+                              let dateValue: string | null = null;
+                              const dateFields = ['Date', 'date', '时间', '日期', 'Date ', 'date '];
+                              for (const field of dateFields) {
+                                if (item[field] !== undefined && item[field] !== null && item[field] !== '') {
+                                  if (typeof item[field] === 'number') {
+                                    const excelDate = new Date((item[field] - 25569) * 86400 * 1000);
+                                    if (!isNaN(excelDate.getTime())) {
+                                      dateValue = excelDate.toISOString().split('T')[0];
+                                      break;
+                                    }
+                                  } else if (typeof item[field] === 'string') {
+                                    const parsedDate = new Date(item[field]);
+                                    if (!isNaN(parsedDate.getTime())) {
+                                      dateValue = parsedDate.toISOString().split('T')[0];
+                                      break;
+                                    }
+                                  }
+                                }
+                              }
+                              return dateValue;
+                            };
+
+                            // Calculate current period conv rate
+                            const totalLeads = brokerDataJson.filter((item: any) => {
+                              const dateValue = extractDate(item);
+                              return dateValue && dateValue >= startDate && dateValue <= endDate;
+                            }).length;
+
+                            const totalMessages = xiaowangMessageData
+                              .filter((item: any) => item.date && item.date >= startDate && item.date <= endDate)
+                              .reduce((sum: number, item: any) => sum + (item.conversionCount || 0), 0);
+
+                            if (totalMessages === 0) {
+                              return <span className="text-gray-400 text-sm font-bold flex items-center">▲ 0.0% <span className="text-xs text-gray-500 ml-1">vs Avg</span></span>;
+                            }
+
+                            const currentConvRate = (totalLeads / totalMessages) * 100;
+
+                            // Calculate historical avg
+                            const historicalTotalLeads = brokerDataJson.length;
+                            const historicalTotalMessages = xiaowangMessageData
+                              .reduce((sum: number, item: any) => sum + (item.conversionCount || 0), 0);
+
+                            let historicalAvg = 0;
+                            if (historicalTotalMessages > 0) {
+                              historicalAvg = (historicalTotalLeads / historicalTotalMessages) * 100;
+                            }
+
+                            // Calculate difference
+                            const convRateDiff = currentConvRate - historicalAvg;
+                            const convRateDiffPercent = historicalAvg > 0 ? (convRateDiff / historicalAvg) * 100 : 0;
+
+                            return (
+                              <>
+                                <span className={`${convRateDiff >= 0 ? 'text-green-600' : 'text-red-600'} text-sm font-bold flex items-center`}>
+                                  {convRateDiff >= 0 ? '▲' : '▼'}
+                                  {Math.abs(convRateDiffPercent).toFixed(1)}%
+                                </span>
+                                <span className="text-xs text-gray-500">vs Avg</span>
+                              </>
+                            );
+                          })()}
+                        </div>
+                        <div className="text-xs text-gray-600">
+                          {(() => {
+                            if (!xiaowangMessageData || xiaowangMessageData.length === 0 || !brokerDataJson || brokerDataJson.length === 0) {
+                              return 'No data';
+                            }
+
+                            // Calculate historical average
+                            const totalLeads = brokerDataJson.length;
+                            const totalMessages = xiaowangMessageData
+                              .reduce((sum: number, item: any) => sum + (item.conversionCount || 0), 0);
+
+                            if (totalMessages === 0) return 'No data';
+
+                            const historicalAvg = (totalLeads / totalMessages) * 100;
+                            return `Historical Avg: ${historicalAvg.toFixed(1)}%`;
+                          })()}
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -3758,7 +3923,7 @@ export default function Home() {
                   }
 
                   // 更新小王测试数据 (小王投放 -> xiaowang advertising, 小王笔记 -> xiaowang notes)
-                  if (data.xiaowangAdvertising || data.xiaowangNotes || data.xiaowangConsultation) {
+                  if (data.xiaowangAdvertising || data.xiaowangNotes || data.xiaowangConsultation || data.xiaowangMessage) {
                     // All-in-One现在返回的是rawData而不是adData
                     if (data.xiaowangAdvertising && data.xiaowangAdvertising.rawData) {
                       // 使用新格式，构造正确的数据结构
@@ -3786,6 +3951,22 @@ export default function Home() {
                     if (data.xiaowangNotes && data.xiaowangNotes.length > 0) {
                       console.log('All-in-One: Updating XiaoWang notes data:', data.xiaowangNotes.length, 'notes');
                       setXiaowangTestNotesData(data.xiaowangNotes);
+                    }
+
+                    // 更新小王私信数据到正确的状态
+                    console.log('🔍 [Frontend] Checking xiaowangMessage from API response:');
+                    console.log('  - data.xiaowangMessage exists?', !!data.xiaowangMessage);
+                    console.log('  - data.xiaowangMessage length:', data.xiaowangMessage?.length);
+                    if (data.xiaowangMessage) {
+                      console.log('  - Sample data:', data.xiaowangMessage.slice(0, 3));
+                    }
+
+                    if (data.xiaowangMessage && data.xiaowangMessage.length > 0) {
+                      console.log('✅ All-in-One: Updating XiaoWang message data:', data.xiaowangMessage.length, 'records');
+                      setXiaowangMessageData(data.xiaowangMessage);
+                      console.log('✅ Data saved to sessionStorage');
+                    } else {
+                      console.log('⚠️ No xiaowangMessage data to save (null or empty)');
                     }
 
                     // 切换到小王测试账户

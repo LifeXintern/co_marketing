@@ -101,6 +101,7 @@ export async function POST(request: NextRequest) {
     console.log('Looking for these sheets:')
     console.log('- Clients_info (for XiaoWang consultation)')
     console.log('- 小王投放 (for XiaoWang advertising)')
+    console.log('- 小王私信 (for XiaoWang messages)')
     console.log('- 小王笔记 (for XiaoWang notes)')
     console.log('- Lifecar投放 (for LifeCar data)')
     console.log('- Lifecar笔记 (for LifeCar notes)')
@@ -108,6 +109,7 @@ export async function POST(request: NextRequest) {
     const processedData: any = {
       xiaowangConsultation: null,
       xiaowangAdvertising: null,
+      xiaowangMessage: null,
       xiaowangNotes: null,
       lifecarData: null,
       lifecarNotes: null
@@ -116,6 +118,7 @@ export async function POST(request: NextRequest) {
     const processed = {
       xiaowangConsultation: false,
       xiaowangAdvertising: false,
+      xiaowangMessage: false,
       xiaowangNotes: false,
       lifecarData: false,
       lifecarNotes: false
@@ -259,8 +262,16 @@ export async function POST(request: NextRequest) {
             avgInteractionCost: (parseFloat(row['平均互动成本'] || '0')) / 4.7, // Convert RMB to AUD
             actionClicks: parseInt(row['行动按钮点击量'] || '0'),
             actionClickRate: parseFloat((row['行动按钮点击率'] || '0').toString().replace('%', '')),
-            conversions: parseInt(row['多转化人数（添加企微+私信咨询）'] || '0'),
-            conversionCost: (parseFloat(row['多转化成本（添加企微+私信咨询）'] || '0')) / 4.7 // Convert RMB to AUD
+            conversions: parseInt(
+              row['多转化人数（添加企微+私信咨询）']
+              || row['多转化人数(添加企微+私信咨询)']
+              || '0'
+            ),
+            conversionCost: (parseFloat(
+              row['多转化成本（添加企微+私信咨询）']
+              || row['多转化成本(添加企微+私信咨询)']
+              || '0'
+            )) / 4.7 // Convert RMB to AUD
           }
         })
 
@@ -340,6 +351,81 @@ export async function POST(request: NextRequest) {
       } catch (error) {
         console.error('Error processing 小王投放 sheet:', error)
       }
+    }
+
+    // Process XiaoWang Messages (小王私信 sheet)
+    console.log('🔍 Checking for 小王私信 sheet...')
+    console.log('Available sheet names:', workbook.SheetNames)
+    console.log('Exact match check:', workbook.SheetNames.includes('小王私信'))
+
+    if (workbook.SheetNames.includes('小王私信')) {
+      try {
+        console.log('✅ Found 小王私信 sheet, processing...')
+        const sheet = workbook.Sheets['小王私信']
+        const data = XLSX.utils.sheet_to_json(sheet)
+        console.log('Raw 小王私信 data rows:', data.length)
+        console.log('First row columns:', data[0] ? Object.keys(data[0]) : 'NO DATA')
+
+        const messageData = data.map((row: any, index: number) => {
+          // 转换Excel序列号日期为YYYY-MM-DD格式
+          const rawDate = row['时间'] || '';
+          let formattedDate = rawDate;
+
+          if (typeof rawDate === 'number') {
+            // Excel date serial number to Date object
+            const dateObj = new Date((rawDate - 25569) * 86400 * 1000);
+            if (!isNaN(dateObj.getTime())) {
+              formattedDate = dateObj.toISOString().split('T')[0]; // YYYY-MM-DD
+            }
+          } else if (typeof rawDate === 'string' && rawDate.includes('/')) {
+            // Handle D/M/YYYY format (如 "1/9/2024")
+            const parts = rawDate.split('/');
+            if (parts.length === 3) {
+              const day = parts[0].padStart(2, '0');
+              const month = parts[1].padStart(2, '0');
+              const year = parts[2];
+              formattedDate = `${year}-${month}-${day}`;
+            }
+          }
+
+          // 读取转化人数 - 支持全角和半角括号
+          const conversionCount = row['多转化人数（添加企微+私信咨询）']
+            || row['多转化人数(添加企微+私信咨询)']
+            || row['多转化人数']
+            || 0;
+
+          // 调试前5行数据
+          if (index < 5) {
+            console.log(`XiaoWang Message Row ${index}:`);
+            console.log(`  - Raw row data:`, row);
+            console.log(`  - Date field (时间):`, row['时间']);
+            console.log(`  - Date conversion: "${rawDate}" -> "${formattedDate}"`);
+            console.log(`  - Conversion field (多转化人数（添加企微+私信咨询）):`, row['多转化人数（添加企微+私信咨询）']);
+            console.log(`  - Conversion field (多转化人数(添加企微+私信咨询)):`, row['多转化人数(添加企微+私信咨询)']);
+            console.log(`  - Selected conversion value:`, conversionCount);
+            console.log(`  - Parsed conversion count:`, parseInt(conversionCount.toString()));
+          }
+
+          return {
+            date: formattedDate,  // YYYY-MM-DD格式的日期字符串
+            conversionCount: parseInt(conversionCount.toString())
+          }
+        })
+
+        console.log('📊 Processed messageData summary:');
+        console.log('  - Total rows:', messageData.length);
+        console.log('  - Sample data:', messageData.slice(0, 3));
+        console.log('  - Total conversions:', messageData.reduce((sum, item) => sum + item.conversionCount, 0));
+
+        processedData.xiaowangMessage = messageData
+        processed.xiaowangMessage = true
+        console.log(`✅ Processed ${data.length} XiaoWang message records`)
+      } catch (error) {
+        console.error('❌ Error processing 小王私信 sheet:', error)
+      }
+    } else {
+      console.log('⚠️ Sheet "小王私信" not found in uploaded Excel file')
+      console.log('Available sheets:', workbook.SheetNames)
     }
 
     // Process XiaoWang Notes (小王笔记 sheet)
@@ -446,10 +532,30 @@ export async function POST(request: NextRequest) {
             searchConversionRate: parseFloat(row['搜索转化率'] || row['Search Conversion Rate'] || '0'),
             avgReadNotesAfterSearch: parseFloat(row['搜索后平均阅读笔记数'] || row['Avg Read Notes After Search'] || '0'),
             readCountAfterSearch: parseInt(row['搜索后阅读数'] || row['Read Count After Search'] || '0'),
-            multiConversion1: parseInt(row['多转化人数（添加企微+私信咨询）'] || row['Multi Conversion 1'] || '0'),
-            multiConversionCost1: parseFloat(row['多转化成本（添加企微+私信咨询）'] || row['Multi Conversion Cost 1'] || '0') / 4.7, // RMB转AUD
-            multiConversion2: parseInt(row['多转化人数（添加企微成功+私信留资）'] || row['Multi Conversion 2'] || '0'),
-            multiConversionCost2: parseFloat(row['多转化成本（添加企微成功+私信留资）'] || row['Multi Conversion Cost 2'] || '0') / 4.7, // RMB转AUD
+            multiConversion1: parseInt(
+              row['多转化人数（添加企微+私信咨询）']
+              || row['多转化人数(添加企微+私信咨询)']
+              || row['Multi Conversion 1']
+              || '0'
+            ),
+            multiConversionCost1: parseFloat(
+              row['多转化成本（添加企微+私信咨询）']
+              || row['多转化成本(添加企微+私信咨询)']
+              || row['Multi Conversion Cost 1']
+              || '0'
+            ) / 4.7, // RMB转AUD
+            multiConversion2: parseInt(
+              row['多转化人数（添加企微成功+私信留资）']
+              || row['多转化人数(添加企微成功+私信留资)']
+              || row['Multi Conversion 2']
+              || '0'
+            ),
+            multiConversionCost2: parseFloat(
+              row['多转化成本（添加企微成功+私信留资）']
+              || row['多转化成本(添加企微成功+私信留资)']
+              || row['Multi Conversion Cost 2']
+              || '0'
+            ) / 4.7, // RMB转AUD
             // 兼容旧字段名
             ctr: parseFloat(row['点击率'] || row['CTR'] || '0'),
             cpc: parseFloat(row['平均点击成本'] || row['CPC'] || row['单次点击成本'] || '0') / 4.7, // RMB转AUD，与单个上传一致

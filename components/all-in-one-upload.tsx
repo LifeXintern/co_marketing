@@ -18,12 +18,14 @@ export function AllInOneUpload({ onUploadSuccess }: AllInOneUploadProps) {
   const [processedData, setProcessedData] = useState<{
     xiaowangConsultation: boolean
     xiaowangAdvertising: boolean
+    xiaowangMessage: boolean
     xiaowangNotes: boolean
     lifecarData: boolean
     lifecarNotes: boolean
   }>({
     xiaowangConsultation: false,
     xiaowangAdvertising: false,
+    xiaowangMessage: false,
     xiaowangNotes: false,
     lifecarData: false,
     lifecarNotes: false
@@ -39,6 +41,7 @@ export function AllInOneUpload({ onUploadSuccess }: AllInOneUploadProps) {
       setProcessedData({
         xiaowangConsultation: false,
         xiaowangAdvertising: false,
+        xiaowangMessage: false,
         xiaowangNotes: false,
         lifecarData: false,
         lifecarNotes: false
@@ -94,6 +97,7 @@ export function AllInOneUpload({ onUploadSuccess }: AllInOneUploadProps) {
         setProcessedData({
           xiaowangConsultation: result.processed?.xiaowangConsultation || false,
           xiaowangAdvertising: result.processed?.xiaowangAdvertising || false,
+          xiaowangMessage: result.processed?.xiaowangMessage || false,
           xiaowangNotes: result.processed?.xiaowangNotes || false,
           lifecarData: result.processed?.lifecarData || false,
           lifecarNotes: result.processed?.lifecarNotes || false
@@ -252,6 +256,15 @@ export function AllInOneUpload({ onUploadSuccess }: AllInOneUploadProps) {
                 </span>
               </div>
               <div className="flex items-center gap-2 text-sm">
+                {processedData.xiaowangMessage ?
+                  <Check className="h-3 w-3 text-green-600" /> :
+                  <AlertCircle className="h-3 w-3 text-gray-400" />
+                }
+                <span className={processedData.xiaowangMessage ? 'text-green-700' : 'text-gray-500'}>
+                  XiaoWang Message Data (小王私信)
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
                 {processedData.xiaowangNotes ?
                   <Check className="h-3 w-3 text-green-600" /> :
                   <AlertCircle className="h-3 w-3 text-gray-400" />
@@ -288,6 +301,7 @@ export function AllInOneUpload({ onUploadSuccess }: AllInOneUploadProps) {
           <ul className="list-disc list-inside space-y-1 ml-2">
             <li>Sheet "Clients_info" - XiaoWang Leads Database</li>
             <li>Sheet "小王投放" - XiaoWang Advertising Data</li>
+            <li>Sheet "小王私信" - XiaoWang Message Data</li>
             <li>Sheet "小王笔记" - XiaoWang Posts Data</li>
             <li>Sheet "Lifecar投放" - LifeCar Advertising Data</li>
             <li>Sheet "Lifecar笔记" - LifeCar Posts Data</li>

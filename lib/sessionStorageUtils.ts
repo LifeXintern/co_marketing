@@ -7,6 +7,7 @@ export interface StorageData {
   dailyCostData: any[];
   xiaowangTestData: any | null;
   xiaowangTestNotesData: any[];
+  xiaowangMessageData?: any[];
   lifeCarData: any[];
   lifeCarMonthlyData: any[];
   lifeCarNotesData: any[];
@@ -19,6 +20,7 @@ const defaultData: StorageData = {
   dailyCostData: [],
   xiaowangTestData: null,
   xiaowangTestNotesData: [],
+  xiaowangMessageData: [],
   lifeCarData: [],
   lifeCarMonthlyData: [],
   lifeCarNotesData: [],
