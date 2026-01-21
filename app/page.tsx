@@ -270,7 +270,7 @@ export default function Home() {
   const [selectedAccount, setSelectedAccount] = useState('xiaowang-test');
 
   // 小王测试组件间共享的指标选择状态
-  const [xiaowangSelectedMetric, setXiaowangSelectedMetric] = useState<'views' | 'likes' | 'followers' | 'leads'>('views');
+  const [xiaowangSelectedMetric, setXiaowangSelectedMetric] = useState<'views' | 'likes' | 'followers' | 'leads'>('leads');
 
   // 小王测试Weekly Performance时间段筛选状态
   const [weeklyTimePeriod, setWeeklyTimePeriod] = useState<number>(12); // Default 12 weeks
