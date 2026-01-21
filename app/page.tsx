@@ -20,6 +20,7 @@ import { AccountSwitcher } from "@/components/ui/platform-switcher"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Eye, EyeOff } from "lucide-react"
 import { LifeCarDailyTrends } from "@/components/lifecar-daily-trends"
 import { LifeCarMonthlySummary } from "@/components/lifecar-monthly-summary"
@@ -3361,7 +3362,7 @@ export default function Home() {
                         <nav className="space-y-1">
                           <button
                             onClick={() => {
-                              const element = document.getElementById('day-of-week-analysis');
+                              const element = document.getElementById('monthly-analysis');
                               if (element) {
                                 // Calculate dynamic header heights
                                 let totalHeaderHeight = 96; // base sticky header height
@@ -3381,7 +3382,7 @@ export default function Home() {
                             className="w-full text-left px-2 py-1.5 text-xs text-gray-600 hover:text-[#751FAE] hover:bg-purple-50 rounded-md transition-all duration-200 flex items-center gap-2"
                           >
                             <div className="w-1.5 h-1.5 bg-[#751FAE]"></div>
-                            Day of Week
+                            Monthly Analysis
                           </button>
                           <button
                             onClick={() => {
@@ -3409,7 +3410,7 @@ export default function Home() {
                           </button>
                           <button
                             onClick={() => {
-                              const element = document.getElementById('monthly-analysis');
+                              const element = document.getElementById('day-of-week-analysis');
                               if (element) {
                                 // Calculate dynamic header heights
                                 let totalHeaderHeight = 96; // base sticky header height
@@ -3429,122 +3430,135 @@ export default function Home() {
                             className="w-full text-left px-2 py-1.5 text-xs text-gray-600 hover:text-[#751FAE] hover:bg-purple-50 rounded-md transition-all duration-200 flex items-center gap-2"
                           >
                             <div className="w-1.5 h-1.5 bg-[#751FAE]"></div>
-                            Monthly Analysis
+                            Daily Analysis
                           </button>
                         </nav>
                       </div>
                     </div>
 
                     {/* Main Content */}
-                    <div className="max-w-7xl mx-auto mb-4 space-y-6">
-                      {/* Day of Week Analysis Section */}
-                      <div id="day-of-week-analysis">
-                        <h2 className="text-xl font-semibold mb-3 bg-gradient-to-r from-[#751FAE] to-[#EF3C99] bg-clip-text text-transparent font-montserrat flex items-center gap-2">
-                          <div className="w-4 h-4 bg-[#751FAE]"></div>
-                          Day of Week Analysis
-                        </h2>
+                    <div className="max-w-7xl mx-auto mb-4">
+                      <Accordion type="multiple" defaultValue={["monthly-analysis", "weekly-performance", "day-of-week-analysis"]} className="space-y-4">
 
-                        <XiaowangTestCostAnalysis
-                          xiaowangTestData={xiaowangTestData}
-                          brokerData={brokerDataJson}
-                          startDate={startDate}
-                          endDate={endDate}
-                          selectedMetric={xiaowangSelectedMetric}
-                          onMetricChange={setXiaowangSelectedMetric}
-                          isFiltered={xiaowangChartFiltered}
-                          onFilterChange={setXiaowangChartFiltered}
-                          notesData={xiaowangTestNotesData}
-                          notesWeekdayCount={xiaowangNotesWeekdayCount}
-                        />
+                        {/* Monthly Analysis Section */}
+                        <AccordionItem value="monthly-analysis" id="monthly-analysis" className="bg-white/95 backdrop-blur-xl rounded-lg border border-gray-200/50 shadow-lg">
+                          <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                            <h2 className="text-xl font-semibold bg-gradient-to-r from-[#751FAE] to-[#EF3C99] bg-clip-text text-transparent font-montserrat flex items-center gap-2">
+                              <div className="w-4 h-4 bg-[#751FAE]"></div>
+                              Monthly Analysis
+                            </h2>
+                          </AccordionTrigger>
+                          <AccordionContent className="px-6 pb-6">
+                            <div className="space-y-8">
+                              <XiaowangTestMonthlyCostAnalysis
+                                xiaowangTestData={xiaowangTestData}
+                                brokerData={brokerDataJson}
+                                selectedMetric={xiaowangSelectedMetric}
+                                onMetricChange={setXiaowangSelectedMetric}
+                                notesMonthlyCount={xiaowangNotesMonthlyCount}
+                              />
 
-                        <div className="mt-8">
-                          <XiaowangTestCostPerMetric
-                            xiaowangTestData={xiaowangTestData}
-                            brokerData={brokerDataJson}
-                            startDate={startDate}
-                            endDate={endDate}
-                            selectedMetric={xiaowangSelectedMetric}
-                            onMetricChange={setXiaowangSelectedMetric}
-                            isFiltered={xiaowangChartFiltered}
-                            onFilterChange={setXiaowangChartFiltered}
-                            notesData={xiaowangTestNotesData}
-                            notesWeekdayCount={xiaowangNotesWeekdayCount}
-                          />
-                        </div>
-                      </div>
+                              <XiaowangTestMonthlyCostPerMetric
+                                xiaowangTestData={xiaowangTestData}
+                                brokerData={brokerDataJson}
+                                selectedMetric={xiaowangSelectedMetric}
+                                onMetricChange={setXiaowangSelectedMetric}
+                                notesMonthlyCount={xiaowangNotesMonthlyCount}
+                              />
+                            </div>
+                          </AccordionContent>
+                        </AccordionItem>
 
-                      {/* Weekly Performance Section */}
-                      <div id="weekly-performance" className="mt-12">
-                        <div className="flex items-center justify-between mb-3">
-                          <h2 className="text-xl font-semibold bg-gradient-to-r from-[#751FAE] to-[#EF3C99] bg-clip-text text-transparent font-montserrat flex items-center gap-2">
-                            <div className="w-4 h-4 bg-[#751FAE]"></div>
-                            Weekly Performance
-                          </h2>
-                          <div className="flex items-center gap-3">
-                            <span className="text-sm font-medium text-gray-700">Latest</span>
-                            <input
-                              type="number"
-                              value={weeklyTimePeriod}
-                              onChange={(e) => {
-                                const value = parseInt(e.target.value);
-                                if (value > 0 && value <= 104) { // Max 2 years = 104 weeks
-                                  setWeeklyTimePeriod(value);
-                                }
-                              }}
-                              className="w-16 px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                              min="1"
-                              max="104"
-                            />
-                            <span className="text-sm font-medium text-gray-700">weeks</span>
-                          </div>
-                        </div>
+                        {/* Weekly Performance Section */}
+                        <AccordionItem value="weekly-performance" id="weekly-performance" className="bg-white/95 backdrop-blur-xl rounded-lg border border-gray-200/50 shadow-lg">
+                          <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                            <div className="flex items-center justify-between w-full pr-4">
+                              <h2 className="text-xl font-semibold bg-gradient-to-r from-[#751FAE] to-[#EF3C99] bg-clip-text text-transparent font-montserrat flex items-center gap-2">
+                                <div className="w-4 h-4 bg-[#751FAE]"></div>
+                                Weekly Performance
+                              </h2>
+                              <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
+                                <span className="text-sm font-medium text-gray-700">Latest</span>
+                                <input
+                                  type="number"
+                                  value={weeklyTimePeriod}
+                                  onChange={(e) => {
+                                    const value = parseInt(e.target.value);
+                                    if (value > 0 && value <= 104) { // Max 2 years = 104 weeks
+                                      setWeeklyTimePeriod(value);
+                                    }
+                                  }}
+                                  className="w-16 px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                  min="1"
+                                  max="104"
+                                />
+                                <span className="text-sm font-medium text-gray-700">weeks</span>
+                              </div>
+                            </div>
+                          </AccordionTrigger>
+                          <AccordionContent className="px-6 pb-6">
+                            <div className="space-y-8">
+                              <XiaowangTestWeeklyCostAnalysis
+                                xiaowangTestData={xiaowangTestData}
+                                brokerData={brokerDataJson}
+                                selectedMetric={xiaowangSelectedMetric}
+                                onMetricChange={setXiaowangSelectedMetric}
+                                weeklyTimePeriod={weeklyTimePeriod}
+                                notesWeeklyCount={xiaowangNotesWeeklyCount}
+                              />
 
-                        <XiaowangTestWeeklyCostAnalysis
-                          xiaowangTestData={xiaowangTestData}
-                          brokerData={brokerDataJson}
-                          selectedMetric={xiaowangSelectedMetric}
-                          onMetricChange={setXiaowangSelectedMetric}
-                          weeklyTimePeriod={weeklyTimePeriod}
-                          notesWeeklyCount={xiaowangNotesWeeklyCount}
-                        />
+                              <XiaowangTestWeeklyCostPerMetric
+                                xiaowangTestData={xiaowangTestData}
+                                brokerData={brokerDataJson}
+                                selectedMetric={xiaowangSelectedMetric}
+                                onMetricChange={setXiaowangSelectedMetric}
+                                weeklyTimePeriod={weeklyTimePeriod}
+                                notesWeeklyCount={xiaowangNotesWeeklyCount}
+                              />
+                            </div>
+                          </AccordionContent>
+                        </AccordionItem>
 
-                        <div className="mt-8">
-                          <XiaowangTestWeeklyCostPerMetric
-                            xiaowangTestData={xiaowangTestData}
-                            brokerData={brokerDataJson}
-                            selectedMetric={xiaowangSelectedMetric}
-                            onMetricChange={setXiaowangSelectedMetric}
-                            weeklyTimePeriod={weeklyTimePeriod}
-                            notesWeeklyCount={xiaowangNotesWeeklyCount}
-                          />
-                        </div>
-                      </div>
+                        {/* Day of Week Analysis Section */}
+                        <AccordionItem value="day-of-week-analysis" id="day-of-week-analysis" className="bg-white/95 backdrop-blur-xl rounded-lg border border-gray-200/50 shadow-lg">
+                          <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                            <h2 className="text-xl font-semibold bg-gradient-to-r from-[#751FAE] to-[#EF3C99] bg-clip-text text-transparent font-montserrat flex items-center gap-2">
+                              <div className="w-4 h-4 bg-[#751FAE]"></div>
+                              Daily Analysis
+                            </h2>
+                          </AccordionTrigger>
+                          <AccordionContent className="px-6 pb-6">
+                            <div className="space-y-8">
+                              <XiaowangTestCostAnalysis
+                                xiaowangTestData={xiaowangTestData}
+                                brokerData={brokerDataJson}
+                                startDate={startDate}
+                                endDate={endDate}
+                                selectedMetric={xiaowangSelectedMetric}
+                                onMetricChange={setXiaowangSelectedMetric}
+                                isFiltered={xiaowangChartFiltered}
+                                onFilterChange={setXiaowangChartFiltered}
+                                notesData={xiaowangTestNotesData}
+                                notesWeekdayCount={xiaowangNotesWeekdayCount}
+                              />
 
-                      {/* Monthly Analysis Section */}
-                      <div id="monthly-analysis" className="mt-12">
-                        <h2 className="text-xl font-semibold mb-3 bg-gradient-to-r from-[#751FAE] to-[#EF3C99] bg-clip-text text-transparent font-montserrat flex items-center gap-2">
-                          <div className="w-4 h-4 bg-[#751FAE]"></div>
-                          Monthly Analysis
-                        </h2>
+                              <XiaowangTestCostPerMetric
+                                xiaowangTestData={xiaowangTestData}
+                                brokerData={brokerDataJson}
+                                startDate={startDate}
+                                endDate={endDate}
+                                selectedMetric={xiaowangSelectedMetric}
+                                onMetricChange={setXiaowangSelectedMetric}
+                                isFiltered={xiaowangChartFiltered}
+                                onFilterChange={setXiaowangChartFiltered}
+                                notesData={xiaowangTestNotesData}
+                                notesWeekdayCount={xiaowangNotesWeekdayCount}
+                              />
+                            </div>
+                          </AccordionContent>
+                        </AccordionItem>
 
-                        <XiaowangTestMonthlyCostAnalysis
-                          xiaowangTestData={xiaowangTestData}
-                          brokerData={brokerDataJson}
-                          selectedMetric={xiaowangSelectedMetric}
-                          onMetricChange={setXiaowangSelectedMetric}
-                          notesMonthlyCount={xiaowangNotesMonthlyCount}
-                        />
-
-                        <div className="mt-8">
-                          <XiaowangTestMonthlyCostPerMetric
-                            xiaowangTestData={xiaowangTestData}
-                            brokerData={brokerDataJson}
-                            selectedMetric={xiaowangSelectedMetric}
-                            onMetricChange={setXiaowangSelectedMetric}
-                            notesMonthlyCount={xiaowangNotesMonthlyCount}
-                          />
-                        </div>
-                      </div>
+                      </Accordion>
                     </div>
                   </>
                 )}
