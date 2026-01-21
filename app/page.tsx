@@ -3352,7 +3352,15 @@ export default function Home() {
                 {/* Cost Analysis Module */}
                 {activeModule === 'cost' && (
                   <>
-                    {/* Left Sidebar Navigation - positioned below sticky header/bar */}
+                    {/*
+                    ==========================================
+                    LEFT SIDEBAR NAVIGATION - TEMPORARILY HIDDEN
+                    ==========================================
+                    This floating navigation sidebar has been temporarily commented out.
+                    To restore it, uncomment the entire <div> block below.
+                    ==========================================
+                    */}
+                    {/* Left Sidebar Navigation - positioned below sticky header/bar
                     <div
                       className="fixed left-4 z-30"
                       style={{
@@ -3436,6 +3444,7 @@ export default function Home() {
                         </nav>
                       </div>
                     </div>
+                    */}
 
                     {/* Main Content */}
                     <div className="max-w-7xl mx-auto mb-4">
