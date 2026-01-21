@@ -5,6 +5,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { LifeCarDailyData } from "@/lib/lifecar-data-processor"
+import { formatDateWithWeekday } from "@/lib/date-utils"
 
 interface LifeCarNote {
   发布时间: string
@@ -199,10 +200,9 @@ export function DualAxisRollingAverageChart({ data, title = "7-Day Rolling Avera
     }
   }, [chartData, metricConfig.dataKey])
 
-  // Format date display
+  // Format date display with weekday (e.g., "Nov 27 (Wed)")
   const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr)
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    return formatDateWithWeekday(dateStr)
   }
 
   // Get posts for a specific date (only if the date is selected)

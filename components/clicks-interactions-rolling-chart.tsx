@@ -4,6 +4,7 @@ import React, { useMemo } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { LifeCarDailyData } from "@/lib/lifecar-data-processor"
+import { formatDateWithWeekday } from "@/lib/date-utils"
 
 interface ClicksInteractionsRollingChartProps {
   data: LifeCarDailyData[]
@@ -132,10 +133,9 @@ export function ClicksInteractionsRollingChart({ data, title = "7-Day Rolling Av
     }
   }, [chartData])
 
-  // Format date display
+  // Format date display with weekday (e.g., "Nov 27 (Wed)")
   const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr)
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    return formatDateWithWeekday(dateStr)
   }
 
   // Custom tooltip

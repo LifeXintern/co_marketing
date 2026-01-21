@@ -5,6 +5,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { LifeCarDailyData } from "@/lib/lifecar-data-processor"
+import { formatDateWithWeekday } from "@/lib/date-utils"
 
 interface LikesCostDailyChartProps {
   data: LifeCarDailyData[]
@@ -305,16 +306,13 @@ export function LikesCostDailyChart({ data, title = "Daily Likes & Cost Analysis
     }
   }, [chartData])
 
-  // Format date display
+  // Format date display with weekday (e.g., "Nov 27 (Wed)")
   const formatDate = (dateStr: string) => {
-    // If it's a 7-day range and filtered, show weekday + date
+    // If it's a 7-day range and filtered, use the weekday formatter
     if (isSevenDayRange && isFiltered) {
-      const date = new Date(dateStr)
-      const weekday = date.toLocaleDateString('en-US', { weekday: 'short' })
-      const monthDay = date.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' })
-      return `${weekday} ${monthDay}`
+      return formatDateWithWeekday(dateStr)
     }
-    
+
     // Otherwise, it's already a weekday string (Mon, Tue, etc.)
     return dateStr
   }

@@ -3340,6 +3340,7 @@ export default function Home() {
                     <XiaowangTestCampaignOverview
                       xiaowangTestData={xiaowangTestData}
                       brokerData={brokerDataJson}
+                      xiaowangMessageData={xiaowangMessageData}
                       startDate={startDate}
                       endDate={endDate}
                     />

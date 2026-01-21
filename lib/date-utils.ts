@@ -7,6 +7,33 @@ export function excelDateToJSDate(excelDate: number): Date {
   return new Date(excelBase.getTime() + excelDate * 24 * 60 * 60 * 1000);
 }
 
+/**
+ * Format date with weekday: "Nov 27 (Wed)"
+ * @param dateInput - YYYY-MM-DD string or Excel serial number
+ * @returns Formatted date string with weekday
+ */
+export function formatDateWithWeekday(dateInput: string | number): string {
+  let date: Date;
+
+  if (typeof dateInput === 'number') {
+    // Excel serial number
+    date = excelDateToJSDate(dateInput);
+  } else {
+    // String date (YYYY-MM-DD)
+    date = new Date(dateInput);
+  }
+
+  if (isNaN(date.getTime())) {
+    return String(dateInput); // Return original if invalid
+  }
+
+  const month = date.toLocaleDateString('en-US', { month: 'short' });
+  const day = date.getDate();
+  const weekday = date.toLocaleDateString('en-US', { weekday: 'short' });
+
+  return `${month} ${day} (${weekday})`;
+}
+
 // Get the actual data range from broker data
 export function getDataRange(): { start: string; end: string } {
   try {

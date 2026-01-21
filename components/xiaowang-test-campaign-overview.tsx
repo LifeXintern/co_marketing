@@ -4,10 +4,12 @@ import React, { useMemo, useState } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { formatDateWithWeekday } from "@/lib/date-utils"
 
 interface XiaowangTestCampaignOverviewProps {
   xiaowangTestData?: any
   brokerData?: any[]
+  xiaowangMessageData?: any[]
   startDate?: string
   endDate?: string
 }
@@ -20,11 +22,13 @@ interface DailyMetrics {
   likes: number
   followers: number
   leads: number
+  message: number
 }
 
 function processDataForCampaignOverview(
   xiaowangTestData: any,
   brokerData: any[],
+  xiaowangMessageData: any[],
   startDate?: string,
   endDate?: string
 ): DailyMetrics[] {
@@ -69,6 +73,22 @@ function processDataForCampaignOverview(
     })
   }
 
+  // Create a map of message conversion counts by date from xiaowangMessageData
+  const messagePerDate: Record<string, number> = {}
+
+  if (xiaowangMessageData && Array.isArray(xiaowangMessageData)) {
+    xiaowangMessageData.forEach(item => {
+      if (!item || typeof item !== 'object') return
+
+      const date = item.date
+      const conversionCount = item.conversionCount || 0
+
+      if (date) {
+        messagePerDate[date] = (messagePerDate[date] || 0) + conversionCount
+      }
+    })
+  }
+
   // Filter and process daily data
   let filteredData = xiaowangTestData.dailyData
 
@@ -80,11 +100,8 @@ function processDataForCampaignOverview(
   }
 
   return filteredData.map((item: any) => {
-    const date = new Date(item.date)
-    const displayDate = date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric'
-    })
+    // Use centralized date formatter with weekday (e.g., "Nov 27 (Wed)")
+    const displayDate = formatDateWithWeekday(item.date)
 
     return {
       date: item.date,
@@ -93,7 +110,8 @@ function processDataForCampaignOverview(
       views: (item.clicks || 0) / 50,  // Divide views by 50 for better scale
       likes: item.likes || 0,
       followers: item.followers || 0,
-      leads: leadsPerDate[item.date] || 0
+      leads: leadsPerDate[item.date] || 0,
+      message: messagePerDate[item.date] || 0
     }
   }).sort((a, b) => {
     const dateA = typeof a.date === 'string' ? a.date : String(a.date);
@@ -131,16 +149,18 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 export function XiaowangTestCampaignOverview({
   xiaowangTestData,
   brokerData = [],
+  xiaowangMessageData = [],
   startDate,
   endDate
 }: XiaowangTestCampaignOverviewProps) {
-  // State for line visibility
+  // State for line visibility - default: only cost, leads, message visible
   const [visibleLines, setVisibleLines] = useState({
     cost: true,
-    views: true,
-    likes: true,
-    followers: true,
-    leads: true
+    views: false,
+    likes: false,
+    followers: false,
+    leads: true,
+    message: true
   })
 
   // Toggle line visibility
@@ -153,8 +173,8 @@ export function XiaowangTestCampaignOverview({
 
   // Process data for the chart
   const chartData = useMemo(() => {
-    return processDataForCampaignOverview(xiaowangTestData, brokerData, startDate, endDate)
-  }, [xiaowangTestData, brokerData, startDate, endDate])
+    return processDataForCampaignOverview(xiaowangTestData, brokerData, xiaowangMessageData, startDate, endDate)
+  }, [xiaowangTestData, brokerData, xiaowangMessageData, startDate, endDate])
 
   // Calculate Y-axis domains for dual axis
   const { leftAxisDomain, rightAxisDomain } = useMemo(() => {
@@ -170,8 +190,8 @@ export function XiaowangTestCampaignOverview({
     const maxCost = costValues.length > 0 ? Math.max(...costValues) : 1
     const leftMax = Math.ceil(maxCost * 1.1)
 
-    // Right axis: Views, Likes, Followers, Leads
-    const rightValues = chartData.flatMap(d => [d.views, d.likes, d.followers, d.leads])
+    // Right axis: Views, Likes, Followers, Leads, Message
+    const rightValues = chartData.flatMap(d => [d.views, d.likes, d.followers, d.leads, d.message])
     const maxRight = Math.max(...rightValues, 1)
     const rightMax = Math.ceil(maxRight * 1.1)
 
@@ -207,12 +227,13 @@ export function XiaowangTestCampaignOverview({
               Daily Performance Metrics
             </CardTitle>
             <p className="text-sm text-gray-600 mt-2">
-              Tracking Cost, Views, Likes, Followers, and Leads over time
+              Tracking Cost, Views, Likes, Followers, Leads, and Message over time
             </p>
           </div>
 
           {/* Line Toggle Buttons */}
           <div className="flex flex-wrap gap-2">
+            {/* Default visible group */}
             <Button
               variant={visibleLines.cost ? "default" : "outline"}
               size="sm"
@@ -225,6 +246,31 @@ export function XiaowangTestCampaignOverview({
             >
               Cost
             </Button>
+            <Button
+              variant={visibleLines.leads ? "default" : "outline"}
+              size="sm"
+              onClick={() => toggleLine('leads')}
+              className={`text-xs ${
+                visibleLines.leads
+                  ? 'bg-[#F59E0B] hover:bg-[#D97706] text-white border-0'
+                  : 'border-[#F59E0B] text-[#F59E0B] hover:bg-[#F59E0B] hover:text-white bg-white'
+              }`}
+            >
+              Leads
+            </Button>
+            <Button
+              variant={visibleLines.message ? "default" : "outline"}
+              size="sm"
+              onClick={() => toggleLine('message')}
+              className={`text-xs ${
+                visibleLines.message
+                  ? 'bg-[#EF4444] hover:bg-[#DC2626] text-white border-0'
+                  : 'border-[#EF4444] text-[#EF4444] hover:bg-[#EF4444] hover:text-white bg-white'
+              }`}
+            >
+              Message
+            </Button>
+            {/* Default hidden group */}
             <Button
               variant={visibleLines.views ? "default" : "outline"}
               size="sm"
@@ -260,18 +306,6 @@ export function XiaowangTestCampaignOverview({
               }`}
             >
               Followers
-            </Button>
-            <Button
-              variant={visibleLines.leads ? "default" : "outline"}
-              size="sm"
-              onClick={() => toggleLine('leads')}
-              className={`text-xs ${
-                visibleLines.leads
-                  ? 'bg-[#F59E0B] hover:bg-[#D97706] text-white border-0'
-                  : 'border-[#F59E0B] text-[#F59E0B] hover:bg-[#F59E0B] hover:text-white bg-white'
-              }`}
-            >
-              Leads
             </Button>
           </div>
         </div>
@@ -386,6 +420,20 @@ export function XiaowangTestCampaignOverview({
                   dataKey="leads"
                   name="Leads"
                   stroke="#F59E0B"
+                  strokeWidth={2.5}
+                  dot={false}
+                  activeDot={{ r: 6 }}
+                />
+              )}
+
+              {/* Message Line - Right Y-axis */}
+              {visibleLines.message && (
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="message"
+                  name="Message"
+                  stroke="#EF4444"
                   strokeWidth={2.5}
                   dot={false}
                   activeDot={{ r: 6 }}

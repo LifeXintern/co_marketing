@@ -4,6 +4,7 @@ import React, { useMemo, useState, useEffect } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LabelList, ReferenceLine } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { formatDateWithWeekday } from "@/lib/date-utils"
 
 interface XiaowangTestCostPerMetricProps {
   xiaowangTestData?: any
@@ -461,13 +462,10 @@ export function XiaowangTestCostPerMetric({
     return totalMetric > 0 ? totalCost / totalMetric : 0
   }, [xiaowangTestData, brokerData, selectedMetric, isFiltered, startDate, endDate])
 
-  // Format date display
+  // Format date display with weekday (e.g., "Nov 27 (Wed)")
   const formatDate = (dateStr: string) => {
     if (isSevenDayRange && isFiltered) {
-      const date = new Date(dateStr)
-      const weekday = date.toLocaleDateString('en-US', { weekday: 'short' })
-      const monthDay = date.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' })
-      return `${weekday} ${monthDay}`
+      return formatDateWithWeekday(dateStr)
     }
     return dateStr
   }

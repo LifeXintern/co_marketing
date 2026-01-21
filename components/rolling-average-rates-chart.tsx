@@ -4,6 +4,7 @@ import { CartesianGrid, Line, LineChart, XAxis, YAxis, Tooltip, Legend, Responsi
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useEffect, useState } from "react"
 import { parseLifeCarData } from "@/lib/lifecar-data-processor"
+import { formatDateWithWeekday } from "@/lib/date-utils"
 
 interface ChartData {
   date: string
@@ -56,9 +57,8 @@ export function RollingAverageRatesChart({ csvContent }: RollingAverageRatesChar
           const avgInteractionRate = window.reduce((sum, item) => 
             sum + (item.impressions > 0 ? (item.interactions / item.impressions) * 100 : 0), 0) / window.length
           
-          // 格式化日期 - 使用当前日期作为标签
-          const date = new Date(sortedData[i].date)
-          const formattedDate = `${date.getMonth() + 1}/${date.getDate()}`
+          // 格式化日期 - 使用当前日期作为标签 (e.g., "Nov 27 (Wed)")
+          const formattedDate = formatDateWithWeekday(sortedData[i].date)
           
           rollingAvgData.push({
             date: formattedDate,
