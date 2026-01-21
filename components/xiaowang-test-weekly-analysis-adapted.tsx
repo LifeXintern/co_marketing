@@ -5,6 +5,7 @@ import React, { useMemo, useState } from 'react';
 interface XiaowangTestWeeklyAnalysisAdaptedProps {
   weeklyData?: any[];
   brokerData?: any[];
+  xiaowangMessageData?: any[];
 }
 
 interface WeeklyMetrics {
@@ -14,20 +15,20 @@ interface WeeklyMetrics {
   totalCost: number
   totalViews: number
   totalLikes: number
-  totalNewFollowers: number
+  totalRednoteMessage: number
   totalLeads: number
   dailyLeads: number
   costPerLead: number
   costChange?: number
   viewsChange?: number
   likesChange?: number
-  newFollowersChange?: number
+  rednoteMessageChange?: number
   leadsChange?: number
   dailyLeadsChange?: number
   costPerLeadChange?: number
 }
 
-export function XiaowangTestWeeklyOverallAverage({ weeklyData = [], brokerData = [] }: XiaowangTestWeeklyAnalysisAdaptedProps) {
+export function XiaowangTestWeeklyOverallAverage({ weeklyData = [], brokerData = [], xiaowangMessageData = [] }: XiaowangTestWeeklyAnalysisAdaptedProps) {
   const [selectedYear, setSelectedYear] = useState<string>('2025');
 
   // Process data to get weekly metrics - same logic as original XiaowangTestWeeklyAnalysis
@@ -38,6 +39,22 @@ export function XiaowangTestWeeklyOverallAverage({ weeklyData = [], brokerData =
 
     // Create a map of leads by date from broker data
     const leadsPerDate: Record<string, number> = {}
+
+    // Create a map of message conversion counts by date from xiaowangMessageData
+    const messagePerDate: Record<string, number> = {}
+
+    if (xiaowangMessageData && Array.isArray(xiaowangMessageData)) {
+      xiaowangMessageData.forEach(item => {
+        if (!item || typeof item !== 'object') return
+
+        const date = item.date
+        const conversionCount = item.conversionCount || 0
+
+        if (date) {
+          messagePerDate[date] = (messagePerDate[date] || 0) + conversionCount
+        }
+      })
+    }
 
     if (brokerData && Array.isArray(brokerData)) {
       brokerData.forEach(item => {
@@ -110,6 +127,12 @@ export function XiaowangTestWeeklyOverallAverage({ weeklyData = [], brokerData =
       const dailyLeads = totalLeads / 7 // Average leads per day
       const costPerLead = totalLeads > 0 ? totalCost / totalLeads : 0
 
+      // Calculate total message count for this week
+      const totalMessage = weekData.reduce((sum, d) => {
+        const date = d.date
+        return sum + (messagePerDate[date] || 0)
+      }, 0)
+
       const metrics: WeeklyMetrics = {
         weekStart: weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
         weekEnd: weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
@@ -117,7 +140,7 @@ export function XiaowangTestWeeklyOverallAverage({ weeklyData = [], brokerData =
         totalCost: totalCost,
         totalViews: weekData.reduce((sum, d) => sum + (d.clicks || 0), 0),
         totalLikes: weekData.reduce((sum, d) => sum + (d.likes || 0), 0),
-        totalNewFollowers: weekData.reduce((sum, d) => sum + (d.followers || 0), 0),
+        totalRednoteMessage: totalMessage,
         totalLeads: totalLeads,
         dailyLeads: dailyLeads,
         costPerLead: costPerLead
@@ -127,7 +150,7 @@ export function XiaowangTestWeeklyOverallAverage({ weeklyData = [], brokerData =
     })
 
     return weeks
-  }, [weeklyData, brokerData])
+  }, [weeklyData, brokerData, xiaowangMessageData])
 
   // Get available years from the data
   const availableYears = useMemo(() => {
@@ -157,7 +180,7 @@ export function XiaowangTestWeeklyOverallAverage({ weeklyData = [], brokerData =
         avgDailyLeads: 0,
         avgCost: 0,
         avgCostPerLead: 0,
-        avgNewFollowers: 0,
+        avgRednoteMessage: 0,
         totalWeeks: 0,
       }
     }
@@ -219,12 +242,12 @@ export function XiaowangTestWeeklyOverallAverage({ weeklyData = [], brokerData =
       });
     }
 
-    // 如果有处理后的周数据，使用它来计算cost和followers
+    // 如果有处理后的周数据，使用它来计算cost和message
     const totals = filteredMetrics.reduce((acc, week) => ({
       totalCost: acc.totalCost + week.totalCost,
       totalLeads: acc.totalLeads + week.totalLeads,
-      totalNewFollowers: acc.totalNewFollowers + week.totalNewFollowers,
-    }), { totalCost: 0, totalLeads: 0, totalNewFollowers: 0 })
+      totalRednoteMessage: acc.totalRednoteMessage + week.totalRednoteMessage,
+    }), { totalCost: 0, totalLeads: 0, totalRednoteMessage: 0 })
 
     // 使用原生数据的leads总数和实际周数计算平均值
     const totalLeadsFromBroker = filteredBrokerData.length;
@@ -234,10 +257,10 @@ export function XiaowangTestWeeklyOverallAverage({ weeklyData = [], brokerData =
       avgDailyLeads: (totalLeadsFromBroker / actualWeeks) / 7, // Average daily leads
       avgCost: totals.totalCost / actualWeeks,  // 使用实际周数计算平均成本
       avgCostPerLead: totalLeadsFromBroker > 0 ? totals.totalCost / totalLeadsFromBroker : 0,
-      avgNewFollowers: totals.totalNewFollowers / actualWeeks,  // 使用实际周数
+      avgRednoteMessage: totals.totalRednoteMessage / actualWeeks,  // 使用实际周数
       totalWeeks: actualWeeks,  // 显示实际周数
     }
-  }, [filteredMetrics, brokerData, selectedYear])
+  }, [filteredMetrics, brokerData, xiaowangMessageData, selectedYear])
 
   return (
     <div className="bg-white/95 backdrop-blur-xl rounded-lg shadow-lg border border-gray-200/50 p-6">
@@ -288,9 +311,9 @@ export function XiaowangTestWeeklyOverallAverage({ weeklyData = [], brokerData =
           </div>
         </div>
         <div className="bg-white/90 backdrop-blur-sm rounded-lg shadow-md border border-gray-200/60 p-5 text-center hover:shadow-lg transition-all duration-200">
-          <div className="text-sm font-semibold text-[#751FAE] mb-2 font-montserrat">Weekly New Followers</div>
+          <div className="text-sm font-semibold text-[#751FAE] mb-2 font-montserrat">Rednote Message</div>
           <div className="text-3xl font-semibold text-[#FF1493] font-montserrat">
-            {overallAverages.avgNewFollowers.toFixed(0)}
+            {overallAverages.avgRednoteMessage.toFixed(0)}
           </div>
         </div>
       </div>
@@ -298,7 +321,7 @@ export function XiaowangTestWeeklyOverallAverage({ weeklyData = [], brokerData =
   )
 }
 
-export function XiaowangTestWeeklyAnalysis({ weeklyData = [], brokerData = [] }: XiaowangTestWeeklyAnalysisAdaptedProps) {
+export function XiaowangTestWeeklyAnalysis({ weeklyData = [], brokerData = [], xiaowangMessageData = [] }: XiaowangTestWeeklyAnalysisAdaptedProps) {
   // Process data to get weekly metrics - same logic as original XiaowangTestWeeklyAnalysis
   const weeklyMetrics = useMemo(() => {
     if (!weeklyData || !Array.isArray(weeklyData)) {
@@ -307,6 +330,22 @@ export function XiaowangTestWeeklyAnalysis({ weeklyData = [], brokerData = [] }:
 
     // Create a map of leads by date from broker data
     const leadsPerDate: Record<string, number> = {}
+
+    // Create a map of message conversion counts by date from xiaowangMessageData
+    const messagePerDate: Record<string, number> = {}
+
+    if (xiaowangMessageData && Array.isArray(xiaowangMessageData)) {
+      xiaowangMessageData.forEach(item => {
+        if (!item || typeof item !== 'object') return
+
+        const date = item.date
+        const conversionCount = item.conversionCount || 0
+
+        if (date) {
+          messagePerDate[date] = (messagePerDate[date] || 0) + conversionCount
+        }
+      })
+    }
 
     if (brokerData && Array.isArray(brokerData)) {
       brokerData.forEach(item => {
@@ -379,6 +418,12 @@ export function XiaowangTestWeeklyAnalysis({ weeklyData = [], brokerData = [] }:
       const dailyLeads = totalLeads / 7 // Average leads per day
       const costPerLead = totalLeads > 0 ? totalCost / totalLeads : 0
 
+      // Calculate total message count for this week
+      const totalMessage = weekData.reduce((sum, d) => {
+        const date = d.date
+        return sum + (messagePerDate[date] || 0)
+      }, 0)
+
       const metrics: WeeklyMetrics = {
         weekStart: weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
         weekEnd: weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
@@ -386,7 +431,7 @@ export function XiaowangTestWeeklyAnalysis({ weeklyData = [], brokerData = [] }:
         totalCost: totalCost,
         totalViews: weekData.reduce((sum, d) => sum + (d.clicks || 0), 0),
         totalLikes: weekData.reduce((sum, d) => sum + (d.likes || 0), 0),
-        totalNewFollowers: weekData.reduce((sum, d) => sum + (d.followers || 0), 0),
+        totalRednoteMessage: totalMessage,
         totalLeads: totalLeads,
         dailyLeads: dailyLeads,
         costPerLead: costPerLead
@@ -416,8 +461,8 @@ export function XiaowangTestWeeklyAnalysis({ weeklyData = [], brokerData = [] }:
       if (previous.totalLikes > 0) {
         current.likesChange = ((current.totalLikes - previous.totalLikes) / previous.totalLikes) * 100
       }
-      if (previous.totalNewFollowers > 0) {
-        current.newFollowersChange = ((current.totalNewFollowers - previous.totalNewFollowers) / previous.totalNewFollowers) * 100
+      if (previous.totalRednoteMessage > 0) {
+        current.rednoteMessageChange = ((current.totalRednoteMessage - previous.totalRednoteMessage) / previous.totalRednoteMessage) * 100
       }
       if (previous.totalLeads > 0) {
         current.leadsChange = ((current.totalLeads - previous.totalLeads) / previous.totalLeads) * 100
@@ -432,7 +477,7 @@ export function XiaowangTestWeeklyAnalysis({ weeklyData = [], brokerData = [] }:
 
     // Reverse to show latest week first, and show only last 12 weeks
     return weeks.reverse().slice(0, 12)
-  }, [weeklyData, brokerData])
+  }, [weeklyData, brokerData, xiaowangMessageData])
 
   const formatNumber = (num: number) => {
     if (num >= 1000000) {
@@ -567,15 +612,15 @@ export function XiaowangTestWeeklyAnalysis({ weeklyData = [], brokerData = [] }:
                 </div>
               </div>
 
-              {/* New Followers */}
+              {/* Rednote Message */}
               <div className="bg-white/90 backdrop-blur-sm rounded-lg shadow-md border border-gray-200/60 p-3 hover:shadow-lg transition-all duration-200 relative">
                 <svg className="absolute top-2 right-2 w-4 h-4 text-[#751FAE]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
-                <div className="text-xs font-semibold text-[#751FAE] font-montserrat mb-2">New Followers</div>
+                <div className="text-xs font-semibold text-[#751FAE] font-montserrat mb-2">Rednote Message</div>
                 <div className="flex items-center gap-2">
-                  <div className="text-2xl font-semibold text-[#FF1493] font-montserrat">{formatNumber(weekData.totalNewFollowers)}</div>
-                  {renderChangePercent(weekData.newFollowersChange, 'positive')}
+                  <div className="text-2xl font-semibold text-[#FF1493] font-montserrat">{formatNumber(weekData.totalRednoteMessage)}</div>
+                  {renderChangePercent(weekData.rednoteMessageChange, 'positive')}
                 </div>
               </div>
             </div>

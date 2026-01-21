@@ -3581,12 +3581,14 @@ export default function Home() {
                           <XiaowangTestWeeklyOverallAverage
                             weeklyData={xiaowangTestData?.dailyData || []}
                             brokerData={brokerDataJson}
+                            xiaowangMessageData={xiaowangMessageData}
                           />
 
                           {/* Weekly Performance Details */}
                           <XiaowangTestWeeklyAnalysisAdapted
                             weeklyData={xiaowangTestData?.dailyData || []}
                             brokerData={brokerDataJson}
+                            xiaowangMessageData={xiaowangMessageData}
                           />
                         </div>
                       </>
