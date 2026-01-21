@@ -3498,7 +3498,7 @@ export default function Home() {
                           </AccordionTrigger>
                           <AccordionContent className="px-6 pb-6">
                             <div className="space-y-8">
-                              <XiaowangTestWeeklyCostAnalysis
+                              <XiaowangTestWeeklyCostPerMetric
                                 xiaowangTestData={xiaowangTestData}
                                 brokerData={brokerDataJson}
                                 selectedMetric={xiaowangSelectedMetric}
@@ -3507,7 +3507,7 @@ export default function Home() {
                                 notesWeeklyCount={xiaowangNotesWeeklyCount}
                               />
 
-                              <XiaowangTestWeeklyCostPerMetric
+                              <XiaowangTestWeeklyCostAnalysis
                                 xiaowangTestData={xiaowangTestData}
                                 brokerData={brokerDataJson}
                                 selectedMetric={xiaowangSelectedMetric}
