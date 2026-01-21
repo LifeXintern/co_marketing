@@ -253,7 +253,7 @@ function processBrokerDataForWeekday(brokerDataJson: any[]) {
 
 export default function Home() {
   // 模块导航状态
-  const [activeModule, setActiveModule] = useState('broker');
+  const [activeModule, setActiveModule] = useState('campaign-overview');
   const [showUpload, setShowUpload] = useState(false);
   const [uploadAccountType, setUploadAccountType] = useState<'lifecar' | 'xiaowang'>('xiaowang');
   const [showXiaowangTestUpload, setShowXiaowangTestUpload] = useState(false);
