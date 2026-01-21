@@ -38,6 +38,7 @@ import { XiaowangDualUpload } from "@/components/xiaowang-dual-upload"
 import { AllInOneUpload } from "@/components/all-in-one-upload"
 import { XiaowangTestCostAnalysis } from "@/components/xiaowang-test-cost-analysis"
 import { XiaowangTestCostPerMetric } from "@/components/xiaowang-test-cost-per-metric"
+import { XiaowangTestWeekdayLeadsDistribution } from "@/components/xiaowang-test-weekday-leads-distribution"
 import { XiaowangTestWeeklyCostAnalysis } from "@/components/xiaowang-test-weekly-cost-analysis"
 import { XiaowangTestWeeklyCostPerMetric } from "@/components/xiaowang-test-weekly-cost-per-metric"
 import { XiaowangTestWeeklyAnalysis } from "@/components/xiaowang-test-weekly-analysis"
@@ -3542,17 +3543,11 @@ export default function Home() {
                                 notesWeekdayCount={xiaowangNotesWeekdayCount}
                               />
 
-                              <XiaowangTestCostPerMetric
+                              <XiaowangTestWeekdayLeadsDistribution
                                 xiaowangTestData={xiaowangTestData}
                                 brokerData={brokerDataJson}
-                                startDate={startDate}
-                                endDate={endDate}
-                                selectedMetric={xiaowangSelectedMetric}
-                                onMetricChange={setXiaowangSelectedMetric}
-                                isFiltered={xiaowangChartFiltered}
-                                onFilterChange={setXiaowangChartFiltered}
-                                notesData={xiaowangTestNotesData}
-                                notesWeekdayCount={xiaowangNotesWeekdayCount}
+                                globalStartDate={startDate}
+                                globalEndDate={endDate}
                               />
                             </div>
                           </AccordionContent>
