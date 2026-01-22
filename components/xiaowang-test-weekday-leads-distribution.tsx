@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useMemo, useState } from 'react'
-import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Calendar as CalendarIcon } from "lucide-react"
@@ -12,12 +12,14 @@ interface XiaowangTestWeekdayLeadsDistributionProps {
   title?: string
   globalStartDate?: string  // 全局时间 filter
   globalEndDate?: string    // 全局时间 filter
+  globalDailyLeadsAvg?: number  // 全局 Daily Leads Average (from Daily Leads & Cost Trend)
 }
 
 interface WeekdayData {
   weekday: string
-  independentLeads: number  // 独立时间段的 leads
-  globalLeads: number       // 全局时间段的 leads
+  independentLeads: number     // 独立时间段的 leads (total)
+  independentAvgLeads: number  // 独立时间段的 leads (daily average per weekday)
+  globalLeads: number          // 全局时间段的 leads
 }
 
 // Process broker data to get leads by weekday
@@ -89,12 +91,72 @@ function processWeekdayLeads(brokerData: any[], startDate?: string, endDate?: st
   return weekdayLeads
 }
 
+// Count occurrences of each weekday in the date range
+function countWeekdayOccurrences(brokerData: any[], startDate?: string, endDate?: string): Record<string, number> {
+  const weekdayCount: Record<string, number> = {
+    'Mon': 0,
+    'Tue': 0,
+    'Wed': 0,
+    'Thu': 0,
+    'Fri': 0,
+    'Sat': 0,
+    'Sun': 0
+  }
+
+  if (!brokerData || brokerData.length === 0) return weekdayCount
+
+  // Track unique dates that fall within the range
+  const uniqueDates = new Set<string>()
+
+  brokerData.forEach(item => {
+    const dateField = item.date || item['日期'] || item.Date || item.时间 || item['Date '] || item['date ']
+
+    if (dateField) {
+      let date: string
+
+      // Handle different date formats (same logic as processWeekdayLeads)
+      if (typeof dateField === 'number') {
+        const excelDate = new Date((dateField - 25569) * 86400 * 1000)
+        date = excelDate.toISOString().split('T')[0]
+      } else if (typeof dateField === 'string' && /^\d+$/.test(dateField)) {
+        const excelSerialNumber = parseInt(dateField)
+        const excelDate = new Date((excelSerialNumber - 25569) * 86400 * 1000)
+        date = excelDate.toISOString().split('T')[0]
+      } else if (dateField instanceof Date) {
+        date = dateField.toISOString().split('T')[0]
+      } else {
+        date = String(dateField).split(' ')[0]
+      }
+
+      if (date && date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        // Apply date filter if provided
+        if (startDate && date < startDate) return
+        if (endDate && date > endDate) return
+
+        uniqueDates.add(date)
+      }
+    }
+  })
+
+  // Count occurrences of each weekday from unique dates
+  uniqueDates.forEach(date => {
+    const dateObj = new Date(date)
+    const weekday = dateObj.toLocaleDateString('en-US', { weekday: 'short' })
+    if (weekdayCount[weekday] !== undefined) {
+      weekdayCount[weekday]++
+    }
+  })
+
+  return weekdayCount
+}
+
 export function XiaowangTestWeekdayLeadsDistribution({
   xiaowangTestData,
   brokerData = [],
   title = "Weekday Leads Distribution",
   globalStartDate,
-  globalEndDate
+  globalEndDate,
+  globalDailyLeadsAvg = 0
 }: XiaowangTestWeekdayLeadsDistributionProps) {
   // Component: Weekday Leads Distribution with dual Y-axis
   // Independent time filter state
@@ -106,6 +168,11 @@ export function XiaowangTestWeekdayLeadsDistribution({
     return processWeekdayLeads(brokerData, independentStartDate, independentEndDate)
   }, [brokerData, independentStartDate, independentEndDate])
 
+  // Count weekday occurrences for average calculation
+  const independentWeekdayOccurrences = useMemo(() => {
+    return countWeekdayOccurrences(brokerData, independentStartDate, independentEndDate)
+  }, [brokerData, independentStartDate, independentEndDate])
+
   // Process data for global time period (line chart)
   const globalWeekdayLeads = useMemo(() => {
     return processWeekdayLeads(brokerData, globalStartDate, globalEndDate)
@@ -114,20 +181,28 @@ export function XiaowangTestWeekdayLeadsDistribution({
   // Combine data for chart
   const chartData: WeekdayData[] = useMemo(() => {
     const weekdayOrder = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-    return weekdayOrder.map(weekday => ({
-      weekday,
-      independentLeads: independentWeekdayLeads[weekday] || 0,
-      globalLeads: globalWeekdayLeads[weekday] || 0
-    }))
-  }, [independentWeekdayLeads, globalWeekdayLeads])
+    return weekdayOrder.map(weekday => {
+      const totalLeads = independentWeekdayLeads[weekday] || 0
+      const occurrences = independentWeekdayOccurrences[weekday] || 1
+      const avgLeads = occurrences > 0 ? totalLeads / occurrences : 0
+
+      return {
+        weekday,
+        independentLeads: totalLeads,
+        independentAvgLeads: avgLeads,
+        globalLeads: globalWeekdayLeads[weekday] || 0
+      }
+    })
+  }, [independentWeekdayLeads, independentWeekdayOccurrences, globalWeekdayLeads])
 
   // Calculate max values for each Y axis independently
   const { independentMaxValue, globalMaxValue } = useMemo(() => {
     const independentValues = chartData.map(d => d.independentLeads)
+    const independentAvgValues = chartData.map(d => d.independentAvgLeads)
     const globalValues = chartData.map(d => d.globalLeads)
 
     const independentMax = Math.max(...independentValues, 1)
-    const globalMax = Math.max(...globalValues, 1)
+    const globalMax = Math.max(...globalValues, ...independentAvgValues, 1)
 
     return {
       independentMaxValue: Math.ceil(independentMax * 1.1),
@@ -237,12 +312,34 @@ export function XiaowangTestWeekdayLeadsDistribution({
               <Tooltip content={<CustomTooltip />} />
               <Legend />
 
-              {/* Bar chart for independent time period - Left axis */}
+              {/* Global Daily Leads Average Reference Line - Yellow dashed line */}
+              {globalDailyLeadsAvg > 0 && (
+                <ReferenceLine
+                  yAxisId="global"
+                  y={globalDailyLeadsAvg}
+                  stroke="#F59E0B"
+                  strokeDasharray="8 4"
+                  strokeWidth={2}
+                  label={{ value: `Leads Avg: ${globalDailyLeadsAvg.toFixed(2)}`, position: 'insideTopRight', fill: '#F59E0B', fontSize: 12, fontWeight: 'bold' }}
+                />
+              )}
+
+              {/* Bar chart for independent time period - Total - Left axis */}
               <Bar
                 yAxisId="independent"
                 dataKey="independentLeads"
                 fill="rgba(139, 92, 246, 0.6)"
-                name="Independent Period Leads (Left Axis)"
+                name="Independent Period Leads (Total)"
+                radius={[18, 18, 0, 0]}
+                barSize={35}
+              />
+
+              {/* Bar chart for independent time period - Average - Right axis */}
+              <Bar
+                yAxisId="global"
+                dataKey="independentAvgLeads"
+                fill="rgba(139, 92, 246, 0.85)"
+                name="Independent Period Leads (Daily Avg)"
                 radius={[18, 18, 0, 0]}
                 barSize={35}
               />

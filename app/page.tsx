@@ -1338,6 +1338,51 @@ export default function Home() {
     };
   }, [xiaowangTestData, startDate, endDate, xiaowangTestLoading]);
 
+  // Calculate global Daily Leads Average (for Weekday Leads Distribution yellow dashed line)
+  // Reuses calculation logic from XiaowangTestCostAnalysis
+  const globalDailyLeadsAvg = useMemo(() => {
+    if (!xiaowangTestData?.rawData || !brokerDataJson || brokerDataJson.length === 0) return 0;
+
+    const rawData = xiaowangTestData.rawData;
+
+    // Calculate leads per date from brokerData (same logic as XiaowangTestCostAnalysis)
+    const leadsPerDate: Record<string, number> = {};
+    const uniqueClientsByDate: Record<string, Set<any>> = {};
+
+    brokerDataJson.forEach((item: any) => {
+      const dateField = item.date || item['日期'] || item.Date || item.时间;
+      if (dateField && item.no !== null && item.no !== undefined) {
+        let date: string;
+        if (typeof dateField === 'number') {
+          const excelDate = new Date((dateField - 25569) * 86400 * 1000);
+          date = excelDate.toISOString().split('T')[0];
+        } else if (typeof dateField === 'string' && /^\d+$/.test(dateField)) {
+          const excelSerialNumber = parseInt(dateField);
+          const excelDate = new Date((excelSerialNumber - 25569) * 86400 * 1000);
+          date = excelDate.toISOString().split('T')[0];
+        } else if (dateField instanceof Date) {
+          date = dateField.toISOString().split('T')[0];
+        } else {
+          date = String(dateField).split(' ')[0];
+        }
+        if (date && date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          if (!uniqueClientsByDate[date]) {
+            uniqueClientsByDate[date] = new Set();
+          }
+          uniqueClientsByDate[date].add(item.no);
+        }
+      }
+    });
+
+    Object.keys(uniqueClientsByDate).forEach(date => {
+      leadsPerDate[date] = uniqueClientsByDate[date].size;
+    });
+
+    const totalLeads = rawData.reduce((sum: number, item: any) => sum + (leadsPerDate[item.date] || 0), 0);
+    const totalDays = rawData.length;
+    return totalDays > 0 ? totalLeads / totalDays : 0;
+  }, [xiaowangTestData, brokerDataJson]);
+
   // 如果正在加载，显示加载状态
   if (isLoading) {
     return (
@@ -3557,6 +3602,7 @@ export default function Home() {
                                 brokerData={brokerDataJson}
                                 globalStartDate={startDate}
                                 globalEndDate={endDate}
+                                globalDailyLeadsAvg={globalDailyLeadsAvg}
                               />
                             </div>
                           </AccordionContent>
