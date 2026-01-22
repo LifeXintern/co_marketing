@@ -322,6 +322,9 @@ export function XiaowangTestWeeklyOverallAverage({ weeklyData = [], brokerData =
 }
 
 export function XiaowangTestWeeklyAnalysis({ weeklyData = [], brokerData = [], xiaowangMessageData = [] }: XiaowangTestWeeklyAnalysisAdaptedProps) {
+  // State to control how many weeks to display
+  const [selectedWeeks, setSelectedWeeks] = useState<number>(12)
+
   // Process data to get weekly metrics - same logic as original XiaowangTestWeeklyAnalysis
   const weeklyMetrics = useMemo(() => {
     if (!weeklyData || !Array.isArray(weeklyData)) {
@@ -475,9 +478,9 @@ export function XiaowangTestWeeklyAnalysis({ weeklyData = [], brokerData = [], x
       }
     }
 
-    // Reverse to show latest week first, and show only last 12 weeks
-    return weeks.reverse().slice(0, 12)
-  }, [weeklyData, brokerData, xiaowangMessageData])
+    // Reverse to show latest week first, and show only selected number of weeks
+    return weeks.reverse().slice(0, selectedWeeks)
+  }, [weeklyData, brokerData, xiaowangMessageData, selectedWeeks])
 
   const formatNumber = (num: number) => {
     if (num >= 1000000) {
@@ -532,15 +535,41 @@ export function XiaowangTestWeeklyAnalysis({ weeklyData = [], brokerData = [], x
     )
   }
 
+  const handleWeeksInput = (value: string) => {
+    const numWeeks = parseInt(value)
+    if (!isNaN(numWeeks)) {
+      // Clamp value between 1 and 52
+      const clampedWeeks = Math.max(1, Math.min(52, numWeeks))
+      setSelectedWeeks(clampedWeeks)
+    } else if (value === '') {
+      // Allow empty input temporarily, will default to 12 on blur
+      setSelectedWeeks(12)
+    }
+  }
+
   return (
     <div className="space-y-4">
       {/* Weekly Performance Details Header */}
       <div className="bg-white/95 backdrop-blur-xl rounded-lg shadow-lg border border-gray-200/50 p-4">
-        <div className="flex items-center gap-2">
-          <div className="p-2 bg-gradient-to-r from-purple-100 to-pink-100 rounded-lg">
-            <span className="text-purple-600 text-lg">📅</span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="p-2 bg-gradient-to-r from-purple-100 to-pink-100 rounded-lg">
+              <span className="text-purple-600 text-lg">📅</span>
+            </div>
+            <h3 className="text-lg font-semibold text-gray-800 font-montserrat">Weekly Performance Details</h3>
           </div>
-          <h3 className="text-lg font-semibold text-gray-800 font-montserrat">Weekly Performance Details</h3>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-gray-700">Show last</span>
+            <input
+              type="number"
+              min="1"
+              max="52"
+              value={selectedWeeks}
+              onChange={(e) => handleWeeksInput(e.target.value)}
+              className="w-14 px-2 py-1.5 bg-white border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 text-center hover:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all duration-200"
+            />
+            <span className="text-sm font-medium text-gray-700">weeks</span>
+          </div>
         </div>
       </div>
 
