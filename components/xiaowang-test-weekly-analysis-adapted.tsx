@@ -6,6 +6,8 @@ interface XiaowangTestWeeklyAnalysisAdaptedProps {
   weeklyData?: any[];
   brokerData?: any[];
   xiaowangMessageData?: any[];
+  startDate?: string;
+  endDate?: string;
 }
 
 interface WeeklyMetrics {
@@ -28,7 +30,7 @@ interface WeeklyMetrics {
   costPerLeadChange?: number
 }
 
-export function XiaowangTestWeeklyOverallAverage({ weeklyData = [], brokerData = [], xiaowangMessageData = [] }: XiaowangTestWeeklyAnalysisAdaptedProps) {
+export function XiaowangTestWeeklyOverallAverage({ weeklyData = [], brokerData = [], xiaowangMessageData = [], startDate, endDate }: XiaowangTestWeeklyAnalysisAdaptedProps) {
   const [selectedYear, setSelectedYear] = useState<string>('2025');
 
   // Process data to get weekly metrics - same logic as original XiaowangTestWeeklyAnalysis
@@ -321,9 +323,20 @@ export function XiaowangTestWeeklyOverallAverage({ weeklyData = [], brokerData =
   )
 }
 
-export function XiaowangTestWeeklyAnalysis({ weeklyData = [], brokerData = [], xiaowangMessageData = [] }: XiaowangTestWeeklyAnalysisAdaptedProps) {
+export function XiaowangTestWeeklyAnalysis({ weeklyData = [], brokerData = [], xiaowangMessageData = [], startDate, endDate }: XiaowangTestWeeklyAnalysisAdaptedProps) {
   // State to control how many weeks to display
   const [selectedWeeks, setSelectedWeeks] = useState<number>(12)
+
+  // Function to check if a week overlaps with the selected date range
+  const isWeekInRange = (weekStartDate: Date, weekEndDate: Date): boolean => {
+    if (!startDate || !endDate) return false
+
+    const rangeStart = new Date(startDate)
+    const rangeEnd = new Date(endDate)
+
+    // Check if there's any overlap between week range and selected range
+    return weekStartDate <= rangeEnd && weekEndDate >= rangeStart
+  }
 
   // Process data to get weekly metrics - same logic as original XiaowangTestWeeklyAnalysis
   const weeklyMetrics = useMemo(() => {
@@ -575,8 +588,23 @@ export function XiaowangTestWeeklyAnalysis({ weeklyData = [], brokerData = [], x
 
       {/* Individual Weekly Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {weeklyMetrics.map((weekData, index) => (
-          <div key={index} className="bg-white/95 backdrop-blur-xl rounded-lg shadow-lg border border-gray-200/50 p-4">
+        {weeklyMetrics.map((weekData, index) => {
+          // Calculate week start date from week end date
+          const weekEnd = weekData.weekEndDate
+          const weekStart = new Date(weekEnd)
+          weekStart.setDate(weekStart.getDate() - 6)
+
+          const isHighlighted = isWeekInRange(weekStart, weekEnd)
+
+          return (
+          <div
+            key={index}
+            className={`bg-white/95 backdrop-blur-xl rounded-lg shadow-lg border p-4 transition-all duration-200 ${
+              isHighlighted
+                ? 'border-purple-500 ring-2 ring-purple-500/30 bg-purple-50/30'
+                : 'border-gray-200/50'
+            }`}
+          >
             <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
               <div className="flex-1">
                 <h4 className="text-2xl font-black text-[#751FAE] font-montserrat">
@@ -654,7 +682,8 @@ export function XiaowangTestWeeklyAnalysis({ weeklyData = [], brokerData = [], x
               </div>
             </div>
           </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

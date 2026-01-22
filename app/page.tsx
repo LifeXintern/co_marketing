@@ -3582,6 +3582,8 @@ export default function Home() {
                             weeklyData={xiaowangTestData?.dailyData || []}
                             brokerData={brokerDataJson}
                             xiaowangMessageData={xiaowangMessageData}
+                            startDate={startDate}
+                            endDate={endDate}
                           />
 
                           {/* Weekly Performance Details */}
@@ -3589,6 +3591,8 @@ export default function Home() {
                             weeklyData={xiaowangTestData?.dailyData || []}
                             brokerData={brokerDataJson}
                             xiaowangMessageData={xiaowangMessageData}
+                            startDate={startDate}
+                            endDate={endDate}
                           />
                         </div>
                       </>
