@@ -9,9 +9,8 @@ const montserrat = Montserrat({
 })
 
 export const metadata: Metadata = {
-  title: 'v0 App',
-  description: 'Created with v0',
-  generator: 'v0.dev',
+  title: 'Marketing Dashboard',
+  description: 'Marketing statistics, historical comparison, and performance tracking for RedNote campaigns.',
 }
 
 export default function RootLayout({

@@ -154,6 +154,16 @@ async function processWorkbook(workbook: XLSX.WorkBook) {
       console.log('单个上传 Excel可用列名:', Object.keys(rawData[0] || {}));
       console.log('单个上传 Excel第一行完整数据:', rawData[0]);
 
+      // Check TYPE field in raw data
+      console.log('=== TYPE 字段验证 ===');
+      console.log('前5条 TYPE 原始值:', rawData.slice(0, 5).map((item: any) => ({
+        no: item['No.'],
+        TYPE: item['TYPE'],
+        Type: item['Type'],
+        type: item.type,
+        类型: item['类型']
+      })));
+
       // 检查Excel中实际的broker分布 (原始数据)
       const rawBrokerCounts = {};
       rawData.forEach((row, index) => {
@@ -168,11 +178,27 @@ async function processWorkbook(workbook: XLSX.WorkBook) {
         broker: item['Broker'] || item.broker,
         date: item['日期'] || item.date,
         wechat: item['微信'] || item.wechat,
-        source: item['来源'] || item.source
+        source: item['来源'] || item.source,
+        type: item['TYPE'] ?? item.Type ?? item.type ?? item['类型'] ?? 0
       }));
       
       results.broker_data = clientData;
       console.log(`Processed ${clientData.length} broker records`);
+
+      // Verify TYPE field mapping
+      console.log('=== TYPE 字段映射后验证 ===');
+      console.log('前5条映射后的 TYPE 值:', clientData.slice(0, 5).map(item => ({
+        no: item.no,
+        type: item.type
+      })));
+
+      // Count TYPE distribution
+      const typeDistribution: Record<string, number> = {};
+      clientData.forEach(item => {
+        const typeKey = String(item.type ?? 'undefined');
+        typeDistribution[typeKey] = (typeDistribution[typeKey] || 0) + 1;
+      });
+      console.log('TYPE 分布统计:', typeDistribution);
     } catch (error: any) {
       console.error('Error processing client data:', error.message);
       throw new Error(`Failed to process client data: ${error.message}`);
@@ -201,7 +227,8 @@ async function processWorkbook(workbook: XLSX.WorkBook) {
           broker: item['Broker'] || item.broker,
           date: item['日期'] || item.date,
           wechat: item['微信'] || item.wechat,
-          source: item['来源'] || item.source
+          source: item['来源'] || item.source,
+          type: item['TYPE'] ?? item.Type ?? item.type ?? item['类型'] ?? 0
         }));
 
         results.broker_data = clientData;

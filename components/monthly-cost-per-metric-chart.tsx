@@ -1,9 +1,8 @@
 "use client"
 
 import React, { useMemo, useState } from 'react'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LabelList, ReferenceLine } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import { MonthlySingleMetricChart } from "@/components/ui/monthly-single-metric-chart"
 import { LifeCarDailyData } from "@/lib/lifecar-data-processor"
 
 interface MonthlyCostPerMetricChartProps {
@@ -99,49 +98,7 @@ function calculateNiceScale(minValue: number, maxValue: number, targetTicks: num
   }
 }
 
-// Label component for cost metrics
-const CostMetricLabel = (props: any) => {
-  const { x, y, value, viewBox, color } = props
-  if (!value || value === 0) return null
-  
-  const text = `$${value.toFixed(2)}`
-  const width = 40
-  const height = 14
-  
-  const chartHeight = viewBox?.height || 300
-  const chartTop = viewBox?.y || 0
-  const relativePosition = (y - chartTop) / chartHeight
-  const shouldPlaceAbove = relativePosition >= 0.5
-  const labelY = shouldPlaceAbove ? y - height - 8 : y + 8
-  
-  const labelColor = color || '#751FAE'
-  
-  return (
-    <g>
-      <rect
-        x={x - width/2}
-        y={labelY}
-        width={width}
-        height={height}
-        fill={`${labelColor}CC`}
-        stroke={labelColor}
-        strokeWidth="1"
-        rx="3"
-      />
-      <text 
-        x={x} 
-        y={labelY + height/2} 
-        fill="white" 
-        fontSize={10} 
-        fontWeight="bold"
-        textAnchor="middle"
-        dominantBaseline="central"
-      >
-        {text}
-      </text>
-    </g>
-  )
-}
+// Custom label extracted to shared component
 
 export function MonthlyCostPerMetricChart({ 
   data, 
@@ -240,216 +197,23 @@ export function MonthlyCostPerMetricChart({
     }
   }, [data, chartData, selectedMetric])
 
-  // Format month display
-  const formatMonth = (monthStr: string) => {
-    const [year, month] = monthStr.split('-')
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-    return `${monthNames[parseInt(month) - 1]} ${year}`
-  }
-
-  // Custom tick component for X-axis with Posts count
-  const CustomTick = (props: any) => {
-    const { x, y, payload } = props
-    const monthStr = payload.value // Format: "2024-09"
-
-    // Convert monthStr format "2024-09" to match notesMonthlyCount key format "Sep 2024"
-    const convertToNotesKey = (monthStr: string) => {
-      const [year, month] = monthStr.split('-')
-      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-      return `${monthNames[parseInt(month) - 1]} ${year}`
-    }
-
-    const notesKey = convertToNotesKey(monthStr)
-    const postsCount = notesMonthlyCount && notesMonthlyCount[notesKey] ? notesMonthlyCount[notesKey] : 0
-    
-    return (
-      <g transform={`translate(${x},${y})`}>
-        <text x={0} y={0} dy={16} textAnchor="middle" fill="#6B7280" fontSize="12">
-          {formatMonth(monthStr)}
-        </text>
-        <text x={0} y={0} dy={32} textAnchor="middle" fill="#6B7280" fontSize="11">
-          {postsCount} Posts
-        </text>
-      </g>
-    )
-  }
-
-  // Custom tooltip
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      const dataPoint = chartData.find(d => d.month === label)
-
-      if (dataPoint) {
-        const [year, month] = label.split('-')
-        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
-                           'July', 'August', 'September', 'October', 'November', 'December']
-        const formattedMonth = `${monthNames[parseInt(month) - 1]} ${year}`
-        const value = dataPoint[selectedMetric]
-
-        // Convert to notesMonthlyCount key format "Sep 2024"
-        const monthNamesShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-        const notesKey = `${monthNamesShort[parseInt(month) - 1]} ${year}`
-        const postsCount = notesMonthlyCount?.[notesKey] || 0
-
-        return (
-          <div className="bg-white/95 backdrop-blur-sm border border-gray-200 rounded-lg p-4 shadow-xl min-w-[200px]">
-            <p className="font-bold text-gray-900 mb-3 border-b pb-2">{formattedMonth}</p>
-
-            <div className="mb-2">
-              <p className="text-sm font-semibold mb-1" style={{ color: '#8B5CF6' }}>
-                📝 Posts
-              </p>
-              <p className="text-sm text-gray-700">{postsCount}</p>
-            </div>
-
-            <div>
-              <p className="text-sm font-semibold mb-1" style={{ color: currentMetricInfo.color }}>
-                💰 {currentMetricInfo.label}
-              </p>
-              <p className="text-sm text-gray-700">${value.toFixed(2)}</p>
-            </div>
-          </div>
-        )
-      }
-    }
-    return null
-  }
-
-  if (!chartData || chartData.length === 0) {
-    return (
-      <Card className="bg-white/95 backdrop-blur-xl shadow-lg border border-gray-200/50">
-        <CardHeader>
-          <CardTitle className="text-xl font-semibold text-gray-900 mb-6 font-montserrat">
-            {title}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-80 flex items-center justify-center text-gray-500">
-            No data available
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
+  const availableMetrics = [
+    { value: 'costPerClick', label: 'View', color: '#3CBDE5' },
+    { value: 'costPerLike', label: 'Like', color: '#EF3C99' },
+    { value: 'costPerFollower', label: 'Follower', color: '#10B981' }
+  ];
 
   return (
-    <Card className="bg-white/95 backdrop-blur-xl shadow-lg border border-gray-200/50">
-      <CardHeader>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <CardTitle className="text-xl font-semibold text-gray-900 mb-6 font-montserrat">
-              Monthly {currentMetricInfo.label}
-            </CardTitle>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-gray-600">Cost per:</span>
-            <Button
-              variant={selectedMetric === 'costPerClick' ? "default" : "outline"}
-              size="sm"
-              onClick={() => handleMetricSelect('costPerClick')}
-              className={selectedMetric === 'costPerClick' 
-                ? 'bg-[#3CBDE5] hover:bg-[#2563EB] text-white border-0' 
-                : 'border-[#3CBDE5] text-[#3CBDE5] hover:bg-[#3CBDE5] hover:text-white'
-              }
-            >
-              View
-            </Button>
-            <Button
-              variant={selectedMetric === 'costPerLike' ? "default" : "outline"}
-              size="sm"
-              onClick={() => handleMetricSelect('costPerLike')}
-              className={selectedMetric === 'costPerLike' 
-                ? 'bg-[#EF3C99] hover:bg-[#E91E63] text-white border-0' 
-                : 'border-[#EF3C99] text-[#EF3C99] hover:bg-[#EF3C99] hover:text-white'
-              }
-            >
-              Like
-            </Button>
-            <Button
-              variant={selectedMetric === 'costPerFollower' ? "default" : "outline"}
-              size="sm"
-              onClick={() => handleMetricSelect('costPerFollower')}
-              className={selectedMetric === 'costPerFollower' 
-                ? 'bg-[#10B981] hover:bg-[#059669] text-white border-0' 
-                : 'border-[#10B981] text-[#10B981] hover:bg-[#10B981] hover:text-white'
-              }
-            >
-              Follower
-            </Button>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="h-96">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart
-              data={chartData}
-              margin={{ top: 20, right: 30, left: 40, bottom: 60 }}
-            >
-              <XAxis 
-                dataKey="month" 
-                tick={<CustomTick />}
-                height={100}
-                scale="point"
-                padding={{ left: 30, right: 30 }}
-              />
-              
-              {/* Left Y-axis - Selected Metric */}
-              <YAxis 
-                orientation="left"
-                domain={metricScale.domain}
-                ticks={metricScale.ticks}
-                tick={{ fontSize: 12, fill: '#6B7280' }}
-                tickFormatter={(value) => {
-                  if (value >= 1000) return `$${(value/1000).toFixed(1)}K`
-                  return `$${value.toFixed(2)}`
-                }}
-                label={{ value: `${currentMetricInfo.label} ($)`, angle: -90, position: 'insideLeft' }}
-              />
-              
-              <Tooltip content={<CustomTooltip />} />
-              <Legend />
-
-              {/* Average Reference Line */}
-              {average > 0 && (
-                <ReferenceLine
-                  y={average}
-                  stroke={`${currentMetricInfo.color}80`}
-                  strokeWidth={2}
-                  strokeDasharray="8 8"
-                />
-              )}
-              
-              {/* Selected Metric Line */}
-              <Line
-                type="monotone"
-                dataKey={selectedMetric}
-                stroke={currentMetricInfo.color}
-                strokeWidth={3}
-                dot={{ fill: currentMetricInfo.color, strokeWidth: 2, r: 4 }}
-                name={`${currentMetricInfo.label} (Avg: $${average.toFixed(2)})`}
-                connectNulls={false}
-              />
-              
-              {/* Labels */}
-              <Line
-                type="monotone"
-                dataKey={selectedMetric}
-                stroke="transparent"
-                dot={false}
-                connectNulls={false}
-                legendType="none"
-              >
-                <LabelList 
-                  content={(props: any) => <CostMetricLabel {...props} color={currentMetricInfo.color} />} 
-                  position="top" 
-                />
-              </Line>
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </CardContent>
-    </Card>
+    <MonthlySingleMetricChart
+      data={chartData}
+      title={title}
+      metricConfig={{...currentMetricInfo, dataKey: selectedMetric}}
+      average={average}
+      metricScale={metricScale}
+      notesMonthlyCount={notesMonthlyCount}
+      selectedMetric={selectedMetric}
+      availableMetrics={availableMetrics}
+      onMetricChange={(m) => handleMetricSelect(m as MetricType)}
+    />
   )
 }

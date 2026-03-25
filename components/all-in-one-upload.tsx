@@ -141,6 +141,7 @@ export function AllInOneUpload({ onUploadSuccess }: AllInOneUploadProps) {
         setProcessedData({
           xiaowangConsultation: false,
           xiaowangAdvertising: false,
+          xiaowangMessage: false,
           xiaowangNotes: false,
           lifecarData: false,
           lifecarNotes: false
@@ -157,8 +158,7 @@ export function AllInOneUpload({ onUploadSuccess }: AllInOneUploadProps) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Package className="h-5 w-5" />
-          All in One Upload
-          <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">测试阶段</span>
+          Upload Dataset
         </CardTitle>
         <p className="text-sm text-gray-600 mt-2">
           Upload a single file containing all data: XiaoWang (Leads, Advertising, Posts) and LifeCar (Data, Posts)
@@ -296,18 +296,10 @@ export function AllInOneUpload({ onUploadSuccess }: AllInOneUploadProps) {
         )}
 
         {/* Instructions */}
-        <div className="text-xs text-gray-500 space-y-1 font-montserrat font-light">
-          <p><strong>Expected Excel structure:</strong></p>
-          <ul className="list-disc list-inside space-y-1 ml-2">
-            <li>Sheet "Clients_info" - XiaoWang Leads Database</li>
-            <li>Sheet "小王投放" - XiaoWang Advertising Data</li>
-            <li>Sheet "小王私信" - XiaoWang Message Data</li>
-            <li>Sheet "小王笔记" - XiaoWang Posts Data</li>
-            <li>Sheet "Lifecar投放" - LifeCar Advertising Data</li>
-            <li>Sheet "Lifecar笔记" - LifeCar Posts Data</li>
-          </ul>
-          <p className="text-xs text-blue-600 mt-1">
-            数据映射: client_info → Leads数据库, 小王投放 → 小王投放数据, 小王笔记 → 小王笔记数据, LifeCar投放 → LifeCar投放数据, LifeCar笔记 → LifeCar笔记数据
+        <div className="mt-4 p-3 bg-blue-50/50 rounded-lg border border-blue-100">
+          <p className="text-sm text-gray-700 font-semibold mb-1">Dataset is located at:</p>
+          <p className="text-sm font-bold text-gray-900 break-all">
+            Z:\LifeX Staff File\06 Client\Database\Weekly_Meeting_Tableau\database_marketing\all_in_one
           </p>
         </div>
       </CardContent>

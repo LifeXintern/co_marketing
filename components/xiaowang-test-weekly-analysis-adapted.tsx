@@ -323,7 +323,7 @@ export function XiaowangTestWeeklyOverallAverage({ weeklyData = [], brokerData =
   )
 }
 
-export function XiaowangTestWeeklyAnalysis({ weeklyData = [], brokerData = [], xiaowangMessageData = [], startDate, endDate }: XiaowangTestWeeklyAnalysisAdaptedProps) {
+export function XiaowangTestWeeklyAnalysisAdapted({ weeklyData = [], brokerData = [], xiaowangMessageData = [], startDate, endDate }: XiaowangTestWeeklyAnalysisAdaptedProps) {
   // State to control how many weeks to display
   const [selectedWeeks, setSelectedWeeks] = useState<number>(12)
 

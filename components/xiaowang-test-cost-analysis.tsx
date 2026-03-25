@@ -41,42 +41,13 @@ function processXiaowangTestData(xiaowangTestData: any, brokerData: any[]): Dail
   // Create a map of leads by date from broker data
   const leadsPerDate: Record<string, number> = {}
 
-  // Debug logging
-  console.log('Processing broker data for leads:', {
-    brokerDataLength: brokerData?.length || 0,
-    sampleData: brokerData?.slice(0, 3) || [],
-    allDateFields: brokerData?.slice(0, 5).map(item => ({
-      date: item.date,
-      Date: item.Date,
-      时间: item.时间,
-      'Date ': item['Date '],
-      'date ': item['date '],
-      no: item.no,
-      allKeys: Object.keys(item)
-    })) || []
-  })
-
   if (brokerData && brokerData.length > 0) {
     // Count unique clients by their 'no' field for each date
     const uniqueClientsByDate: Record<string, Set<any>> = {}
 
-    brokerData.forEach((item, index) => {
-      // Debug logging for individual items
-      if (index < 3) {
-        console.log(`Processing broker item ${index}:`, {
-          fullItem: item,
-          no: item.no,
-          date: item.date,
-          '日期': item['日期'],
-          Date: item.Date,
-          时间: item.时间
-        })
-      }
-
+    brokerData.forEach((item) => {
       // Check different possible date field names (broker data maps '日期' to 'date' field)
       const dateField = item.date || item['日期'] || item.Date || item.时间 || item['Date '] || item['date ']
-
-      console.log(`Item ${index}: dateField=${dateField}, no=${item.no}, hasDateField=${!!dateField}, hasNo=${item.no !== null && item.no !== undefined}`)
 
       if (dateField && item.no !== null && item.no !== undefined) {
         let date: string
@@ -87,21 +58,18 @@ function processXiaowangTestData(xiaowangTestData: any, brokerData: any[]): Dail
           if (/^\d+$/.test(dateField)) {
             // Convert Excel serial number to Date
             const excelSerialNumber = parseInt(dateField)
-            const excelDate = new Date((excelSerialNumber - 25569) * 86400 * 1000) // Excel epoch adjustment
+            const excelDate = new Date((excelSerialNumber - 25569) * 86400 * 1000)
             date = excelDate.toISOString().split('T')[0]
           } else {
             // If it's a string, extract date part (remove time if present)
             date = dateField.split(' ')[0]
           }
         } else if (dateField instanceof Date) {
-          // If it's a Date object, convert to YYYY-MM-DD format
           date = dateField.toISOString().split('T')[0]
         } else if (typeof dateField === 'number') {
-          // Handle Excel serial number as number
-          const excelDate = new Date((dateField - 25569) * 86400 * 1000) // Excel epoch adjustment
+          const excelDate = new Date((dateField - 25569) * 86400 * 1000)
           date = excelDate.toISOString().split('T')[0]
         } else {
-          // If it's some other format, check if it's a numeric string (Excel serial)
           const stringValue = String(dateField)
           if (/^\d+$/.test(stringValue)) {
             const excelSerialNumber = parseInt(stringValue)
@@ -112,20 +80,13 @@ function processXiaowangTestData(xiaowangTestData: any, brokerData: any[]): Dail
           }
         }
 
-        console.log(`Processing date: original=${dateField}, processed=${date}`)
-
         // Ensure we have a valid date format (YYYY-MM-DD)
         if (date && date.match(/^\d{4}-\d{2}-\d{2}$/)) {
           if (!uniqueClientsByDate[date]) {
             uniqueClientsByDate[date] = new Set()
           }
           uniqueClientsByDate[date].add(item.no)
-          console.log(`Added client ${item.no} to date ${date}`)
-        } else {
-          console.log(`Invalid date format: ${date}`)
         }
-      } else {
-        console.log(`Skipping item ${index}: dateField=${!!dateField}, no=${item.no}`)
       }
     })
 
@@ -133,8 +94,6 @@ function processXiaowangTestData(xiaowangTestData: any, brokerData: any[]): Dail
     Object.keys(uniqueClientsByDate).forEach(date => {
       leadsPerDate[date] = uniqueClientsByDate[date].size
     })
-
-    console.log('Processed leads per date:', leadsPerDate)
   }
 
   // Process Xiaowang test daily data
@@ -150,7 +109,7 @@ function processXiaowangTestData(xiaowangTestData: any, brokerData: any[]): Dail
     }
   })
 
-  return processedData.sort((a, b) => {
+  return processedData.sort((a: DailyData, b: DailyData) => {
     const dateA = typeof a.date === 'string' ? a.date : String(a.date);
     const dateB = typeof b.date === 'string' ? b.date : String(b.date);
     return dateA.localeCompare(dateB);
@@ -423,18 +382,7 @@ export function XiaowangTestCostAnalysis({
     onMetricChange?.(metric)
   }
 
-  // Debug logging for component props
-  console.log('XiaowangTestCostAnalysis props:', {
-    xiaowangTestDataExists: !!xiaowangTestData,
-    xiaowangTestDailyDataLength: xiaowangTestData?.dailyData?.length || 0,
-    xiaowangTestRawDataLength: xiaowangTestData?.rawData?.length || 0,
-    brokerDataLength: brokerData?.length || 0,
-    brokerDataSample: brokerData?.slice(0, 2) || [],
-    startDate,
-    endDate,
-    isFiltered,
-    hasRawData: !!xiaowangTestData?.rawData
-  })
+
 
   // Get current metric config
   const metricConfig = useMemo(() => {
@@ -502,27 +450,14 @@ export function XiaowangTestCostAnalysis({
       dailyData: filteredRawData
     }
 
-    console.log('Processing FILTERED data:', {
-      originalLength: xiaowangTestData.rawData.length,
-      filteredLength: filteredRawData.length,
-      startDate,
-      endDate
-    })
-
     return processXiaowangTestData(filteredDataStructure, brokerData)
   }, [xiaowangTestData, brokerData, startDate, endDate])
 
   // Process ALL data (ignoring time filters) - for "All Data" mode
   const allDailyData = useMemo(() => {
     if (!xiaowangTestData?.rawData) {
-      console.log('No rawData available, using filtered data as fallback')
       return filteredDailyData
     }
-
-    console.log('Processing ALL data:', {
-      rawDataLength: xiaowangTestData.rawData.length,
-      filteredDataLength: filteredDailyData.length
-    })
 
     // Create a fake xiaowangTestData structure with rawData as dailyData to get all records
     const allDataStructure = {
@@ -530,22 +465,12 @@ export function XiaowangTestCostAnalysis({
       dailyData: xiaowangTestData.rawData // Use rawData which contains all records
     }
 
-    const result = processXiaowangTestData(allDataStructure, brokerData)
-    console.log('ALL data processed result length:', result.length)
-    return result
+    return processXiaowangTestData(allDataStructure, brokerData)
   }, [xiaowangTestData, brokerData, filteredDailyData])
 
   // Use filtered or all data based on toggle state
   const activeData = useMemo(() => {
-    const result = isFiltered ? filteredDailyData : allDailyData
-    console.log('Active data selection:', {
-      isFiltered,
-      activeDataLength: result.length,
-      filteredLength: filteredDailyData.length,
-      allLength: allDailyData.length,
-      sampleActiveData: result.slice(0, 2)
-    })
-    return result
+    return isFiltered ? filteredDailyData : allDailyData
   }, [filteredDailyData, allDailyData, isFiltered])
 
   const chartData = useMemo(() => {

@@ -127,7 +127,8 @@ export async function GET() {
             broker: item['Broker'] || item.broker,
             date: item['日期'] || item.date,
             wechat: item['微信'] || item.wechat,
-            source: item['来源'] || item.source
+            source: item['来源'] || item.source,
+            type: item['TYPE'] ?? item.Type ?? item.type ?? item['类型'] ?? 0
           }));
         }
       } catch (error) {
@@ -252,7 +253,8 @@ export async function POST(request: Request) {
           broker: item['Broker'] || item.broker,
           date: item['日期'] || item.date,
           wechat: item['微信'] || item.wechat,
-          source: item['来源'] || item.source
+          source: item['来源'] || item.source,
+          type: item['TYPE'] ?? item.Type ?? item.type ?? item['类型'] ?? 0
         }));
       }
     }

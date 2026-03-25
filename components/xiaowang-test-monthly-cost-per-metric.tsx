@@ -1,9 +1,8 @@
 "use client"
 
 import React, { useMemo, useState, useEffect } from 'react'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LabelList, ReferenceLine } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import { MonthlySingleMetricChart } from "@/components/ui/monthly-single-metric-chart"
 
 interface XiaowangTestMonthlyCostPerMetricProps {
   xiaowangTestData?: any
@@ -127,73 +126,7 @@ function processXiaowangTestMonthlyCostData(xiaowangTestData: any, brokerData: a
     .sort((a, b) => a.monthKey.localeCompare(b.monthKey))
 }
 
-// Custom label component for cost per metric data points
-function CustomCostLabel(props: any) {
-  const { x, y, value, index, metricColor } = props
-
-  if (!value || value === 0) return null
-
-  const displayValue = value >= 100 ? `$${value.toFixed(0)}` : `$${value.toFixed(2)}`
-  const width = 36
-  const height = 14
-
-  // Smart positioning to avoid overlaps
-  const baseOffset = 15
-  const staggerOffset = (index % 3) * 6 // Stagger every 3 points for better spacing
-  const yOffset = baseOffset + staggerOffset
-
-  const labelY = y - yOffset - height
-
-  // Use the color from the current metric
-  const labelColor = metricColor || "#751FAE"
-
-  return (
-    <g>
-      <rect
-        x={x - width/2}
-        y={labelY}
-        width={width}
-        height={height}
-        fill={`${labelColor}CC`}
-        stroke={labelColor}
-        strokeWidth="1"
-        rx="3"
-      />
-      <text
-        x={x}
-        y={labelY + height/2}
-        fill="white"
-        fontSize={10}
-        fontWeight="bold"
-        textAnchor="middle"
-        dominantBaseline="central"
-      >
-        {displayValue}
-      </text>
-    </g>
-  )
-}
-
-// Custom tooltip component
-function CustomTooltip({ active, payload, label, notesMonthlyCount }: any) {
-  if (active && payload && payload.length) {
-    // Get posts count for this month
-    const postsCount = notesMonthlyCount && notesMonthlyCount[label] ? notesMonthlyCount[label] : 0
-
-    return (
-      <div className="bg-white/95 backdrop-blur-sm border border-gray-200 rounded-lg shadow-lg p-3">
-        <p className="font-semibold text-gray-900 mb-2">{`Month: ${label}`}</p>
-        <p className="text-sm text-blue-600 mb-2">{`📝 Posts: ${postsCount}`}</p>
-        {payload.map((entry: any, index: number) => (
-          <p key={index} style={{ color: entry.color }} className="text-sm">
-            {`${entry.name}: $${entry.value.toFixed(3)}`}
-          </p>
-        ))}
-      </div>
-    )
-  }
-  return null
-}
+// Custom label and tooltip extracted to shared component
 
 export function XiaowangTestMonthlyCostPerMetric({
   xiaowangTestData,
@@ -378,164 +311,24 @@ export function XiaowangTestMonthlyCostPerMetric({
     )
   }
 
+  const availableMetrics = [
+    { value: 'costPerView', label: 'View', color: '#3CBDE5' },
+    { value: 'costPerLike', label: 'Like', color: '#EF3C99' },
+    { value: 'costPerFollower', label: 'Follower', color: '#10B981' },
+    { value: 'costPerLead', label: 'Lead', color: '#F59E0B' }
+  ];
+
   return (
-    <Card className="bg-white/95 backdrop-blur-xl shadow-lg border border-gray-200/50">
-      <CardHeader>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <CardTitle className="text-xl font-semibold text-gray-900 mb-6 font-montserrat">
-              Monthly {metricConfig.label} Trend
-            </CardTitle>
-          </div>
-
-          <div className="flex items-center gap-4">
-            {/* Metric Selection Buttons - Same order as Daily Analysis */}
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-gray-600">Cost per:</span>
-              <Button
-                variant={selectedMetric === 'costPerView' ? "default" : "outline"}
-                size="sm"
-                onClick={() => handleMetricChange('costPerView')}
-                className={selectedMetric === 'costPerView'
-                  ? 'bg-[#3CBDE5] hover:bg-[#2563EB] text-white border-0'
-                  : 'border-[#3CBDE5] text-[#3CBDE5] hover:bg-[#3CBDE5] hover:text-white'
-                }
-              >
-                View
-              </Button>
-              <Button
-                variant={selectedMetric === 'costPerLike' ? "default" : "outline"}
-                size="sm"
-                onClick={() => handleMetricChange('costPerLike')}
-                className={selectedMetric === 'costPerLike'
-                  ? 'bg-[#EF3C99] hover:bg-[#E91E63] text-white border-0'
-                  : 'border-[#EF3C99] text-[#EF3C99] hover:bg-[#EF3C99] hover:text-white'
-                }
-              >
-                Like
-              </Button>
-              <Button
-                variant={selectedMetric === 'costPerFollower' ? "default" : "outline"}
-                size="sm"
-                onClick={() => handleMetricChange('costPerFollower')}
-                className={selectedMetric === 'costPerFollower'
-                  ? 'bg-[#10B981] hover:bg-[#059669] text-white border-0'
-                  : 'border-[#10B981] text-[#10B981] hover:bg-[#10B981] hover:text-white'
-                }
-              >
-                Follower
-              </Button>
-              <Button
-                variant={selectedMetric === 'costPerLead' ? "default" : "outline"}
-                size="sm"
-                onClick={() => handleMetricChange('costPerLead')}
-                className={selectedMetric === 'costPerLead'
-                  ? 'bg-[#F59E0B] hover:bg-[#D97706] text-white border-0'
-                  : 'border-[#F59E0B] text-[#F59E0B] hover:bg-[#F59E0B] hover:text-white'
-                }
-              >
-                Lead
-              </Button>
-            </div>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="h-96">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={monthlyData} margin={{ top: 40, right: 80, left: 40, bottom: 60 }}>
-              <XAxis
-                dataKey="month"
-                tick={(props: any) => {
-                  const { x, y, payload } = props
-                  const monthStr = payload.value
-
-                  // Count posts for this month
-                  const postsCount = notesMonthlyCount && notesMonthlyCount[monthStr] ? notesMonthlyCount[monthStr] : 0
-
-                  return (
-                    <g>
-                      <text
-                        x={x}
-                        y={y + 16}
-                        textAnchor="end"
-                        fill="#6B7280"
-                        fontSize="11"
-                        transform={`rotate(-45, ${x}, ${y + 16})`}
-                      >
-                        {monthStr}
-                      </text>
-                      <text
-                        x={x}
-                        y={y + 30}
-                        textAnchor="end"
-                        fill="#6B7280"
-                        fontSize="10"
-                        transform={`rotate(-45, ${x}, ${y + 30})`}
-                      >
-                        {postsCount} Posts
-                      </text>
-                    </g>
-                  )
-                }}
-                height={100}
-                scale="point"
-                padding={{ left: 30, right: 30 }}
-              />
-              <YAxis
-                domain={metricScale.domain}
-                ticks={metricScale.ticks}
-                tick={{ fontSize: 11 }}
-                label={{
-                  value: metricConfig.label,
-                  angle: -90,
-                  position: 'insideLeft',
-                  style: { textAnchor: 'middle' }
-                }}
-              />
-
-              <Tooltip content={(props) => <CustomTooltip {...props} notesMonthlyCount={notesMonthlyCount} />} />
-              <Legend />
-
-              {/* Average Reference Line */}
-              {average > 0 && (
-                <ReferenceLine
-                  y={average}
-                  stroke={`${metricConfig.color}80`}
-                  strokeWidth={2}
-                  strokeDasharray="8 8"
-                />
-              )}
-
-              {/* Main Cost Per Metric Line */}
-              <Line
-                type="monotone"
-                dataKey={metricConfig.dataKey}
-                stroke={metricConfig.color}
-                strokeWidth={3}
-                dot={{ fill: metricConfig.color, r: 5 }}
-                name={`${metricConfig.label} (Avg: $${average.toFixed(2)})`}
-                connectNulls={false}
-              />
-
-              {/* Transparent line for labels - same pattern as LifeCar */}
-              <Line
-                type="monotone"
-                dataKey={metricConfig.dataKey}
-                stroke="transparent"
-                dot={false}
-                connectNulls={false}
-                legendType="none"
-              >
-                <LabelList
-                  content={(props) => <CustomCostLabel {...props} data={monthlyData} metricColor={metricConfig.color} />}
-                  position="top"
-                />
-              </Line>
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </CardContent>
-    </Card>
+    <MonthlySingleMetricChart
+      data={monthlyData}
+      title={title}
+      metricConfig={metricConfig}
+      average={average}
+      metricScale={metricScale}
+      notesMonthlyCount={notesMonthlyCount}
+      selectedMetric={selectedMetric}
+      availableMetrics={availableMetrics}
+      onMetricChange={(m) => handleMetricChange(m as MetricType)}
+    />
   )
 }
