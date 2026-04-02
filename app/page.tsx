@@ -17,7 +17,6 @@ const MonthlyPatternChart = dynamic(() => import("@/components/monthly-pattern-c
 const AcquisitionTimeAnalysis = dynamic(() => import("@/components/acquisition-time-analysis").then(mod => mod.AcquisitionTimeAnalysis), { ssr: false })
 const WeeklyAnalysis = dynamic(() => import("@/components/weekly-analysis").then(mod => mod.WeeklyAnalysis), { ssr: false })
 const WeeklyOverallAverage = dynamic(() => import("@/components/weekly-analysis").then(mod => mod.WeeklyOverallAverage), { ssr: false })
-const ExcelUpload = dynamic(() => import("@/components/excel-upload").then(mod => mod.ExcelUpload), { ssr: false })
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -29,7 +28,6 @@ import { parseLifeCarData, aggregateByMonth, filterByDateRange, type LifeCarDail
 const LifeCarNotesModal = dynamic(() => import("@/components/lifecar-notes-modal").then(mod => mod.LifeCarNotesModal), { ssr: false })
 const XiaoWangTestNotesModal = dynamic(() => import("@/components/xiaowang-test-notes-modal").then(mod => mod.XiaoWangTestNotesModal), { ssr: false })
 
-const XiaowangDualUpload = dynamic(() => import("@/components/xiaowang-dual-upload").then(mod => mod.XiaowangDualUpload), { ssr: false })
 const AllInOneUpload = dynamic(() => import("@/components/all-in-one-upload").then(mod => mod.AllInOneUpload), { ssr: false })
 const XiaowangTestCostAnalysis = dynamic(() => import("@/components/xiaowang-test-cost-analysis").then(mod => mod.XiaowangTestCostAnalysis), { ssr: false })
 const XiaowangTestCostPerMetric = dynamic(() => import("@/components/xiaowang-test-cost-per-metric").then(mod => mod.XiaowangTestCostPerMetric), { ssr: false })
@@ -69,7 +67,7 @@ interface XiaowangTestData {
 // --- Date Utilities ---
 
 /**
- * Parses various date formats (Excel serial, "9/20/24", ISO strings) into a Date object.
+ * Parses various date formats (Excel serial, "19/09/2024" DD/MM/YYYY, "2025-12-15 08:43:27", ISO strings) into a Date object.
  */
 function parseDate(dateInput: any): Date | null {
   if (!dateInput && dateInput !== 0) return null;
@@ -84,19 +82,21 @@ function parseDate(dateInput: any): Date | null {
 
     const dateStr = String(dateInput).trim();
 
-    // Handle "MM/DD/YY" or "MM/DD/YYYY"
+    // Handle "DD/MM/YY" or "DD/MM/YYYY"
     if (dateStr.includes('/')) {
       const parts = dateStr.split('/');
       if (parts.length === 3) {
-        const month = parseInt(parts[0]);
-        const day = parseInt(parts[1]);
+        const day = parseInt(parts[0]);
+        const month = parseInt(parts[1]);
         let year = parseInt(parts[2]);
         if (year < 100) year = year > 50 ? 1900 + year : 2000 + year;
         return new Date(year, month - 1, day);
       }
     }
 
-    const date = new Date(dateStr);
+    // Handle "YYYY-MM-DD HH:MM:SS" — strip time component before parsing
+    const dateOnly = dateStr.includes(' ') ? dateStr.split(' ')[0] : dateStr;
+    const date = new Date(dateOnly);
     return isNaN(date.getTime()) ? null : date;
   } catch {
     return null;
@@ -233,9 +233,6 @@ function processWeeklyCostLeadsData(weeklyDataJson: any[]) {
 export default function Home() {
   // 模块导航状态
   const [activeModule, setActiveModule] = useState('campaign-overview');
-  const [showUpload, setShowUpload] = useState(false);
-  const [uploadAccountType, setUploadAccountType] = useState<'lifecar' | 'xiaowang'>('xiaowang');
-  const [showXiaowangTestUpload, setShowXiaowangTestUpload] = useState(false);
   const [showAllInOneUpload, setShowAllInOneUpload] = useState(false);
   const [dataRefreshKey, setDataRefreshKey] = useState(0);
 
@@ -745,7 +742,6 @@ export default function Home() {
   // Handle successful upload - use uploaded data directly
   const handleUploadSuccess = async (uploadedData?: any) => {
     try {
-      setShowUpload(false);
 
       if (uploadedData) {
         // === 单个上传数据内容详细检查 ===
@@ -1117,9 +1113,6 @@ export default function Home() {
         <DashboardHeader
           selectedAccount={selectedAccount}
           handleAccountChange={handleAccountChange}
-          setShowXiaowangTestUpload={setShowXiaowangTestUpload}
-          setUploadAccountType={setUploadAccountType}
-          setShowUpload={setShowUpload}
           setShowAllInOneUpload={setShowAllInOneUpload}
         />
 
@@ -2110,7 +2103,7 @@ export default function Home() {
                   <h3 className="text-xl font-semibold text-gray-700 mb-4">No Test Data Uploaded</h3>
                   <p className="text-gray-500 mb-4">请点击顶部的"小王测试"按钮上传CSV数据文件以开始分析。</p>
                   <button
-                    onClick={() => setShowXiaowangTestUpload(true)}
+                    onClick={() => setShowAllInOneUpload(true)}
                     className="bg-gradient-to-r from-[#751FAE] to-[#EF3C99] text-white px-6 py-2 rounded-lg hover:from-[#6919A6] hover:to-[#E73691] transition-all duration-200"
                   >
                     Upload Test Data
@@ -2122,52 +2115,6 @@ export default function Home() {
         )}
 
       </div>
-
-      {/* Upload Modal - 移到所有条件外部 */}
-      {showUpload && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[9999]">
-          <div className="bg-white/90 backdrop-blur-xl rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl shadow-purple-500/20 border border-purple-200/50">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold bg-gradient-to-r from-[#751FAE] to-[#EF3C99] bg-clip-text text-transparent font-montserrat">Upload Excel Data</h2>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowUpload(false)}
-                className="text-purple-500 hover:text-purple-700 hover:bg-purple-50"
-              >
-                ✕
-              </Button>
-            </div>
-            <ExcelUpload
-              onUploadSuccess={(data: any) => {
-                // 根据上传类型切换账号
-                if (uploadAccountType === 'lifecar') {
-                  setSelectedAccount('lifecar');
-                  // 处理LifeCAR CSV数据
-                  if (data?.csvContent) {
-                    // 存储CSV内容供子组件使用
-                    setLifeCarCsvContent(data.csvContent);
-                    // 解析并设置数据
-                    const parsedData = parseLifeCarData(data.csvContent);
-                    const monthlyData = aggregateByMonth(parsedData);
-                    setLifeCarData(parsedData);
-                    setLifeCarMonthlyData(monthlyData);
-                  } else if (data?.lifecar_data) {
-                    // 如果有已解析的数据，直接使用
-                    setLifeCarData(data.lifecar_data);
-                    const monthlyData = aggregateByMonth(data.lifecar_data);
-                    setLifeCarMonthlyData(monthlyData);
-                  }
-                } else {
-                  setSelectedAccount('xiaowang');
-                  handleUploadSuccess(data);
-                }
-              }}
-              accountType={uploadAccountType}
-            />
-          </div>
-        </div>
-      )}
 
       {/* LifeCar Notes Modal */}
       <LifeCarNotesModal
@@ -2216,67 +2163,6 @@ export default function Home() {
         }}
         selectedDates={selectedXiaowangNoteDates}
       />
-
-      {/* 小王测试数据上传模态框 */}
-      {showXiaowangTestUpload && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[9999]">
-          <div className="bg-white/90 backdrop-blur-xl rounded-xl p-6 max-w-3xl w-full mx-4 shadow-2xl shadow-purple-500/20 border border-purple-200/50">
-            <div className="flex justify-between items-center mb-4">
-              <div>
-                <h2 className="text-lg font-semibold bg-gradient-to-r from-[#751FAE] to-[#EF3C99] bg-clip-text text-transparent font-montserrat">Upload Xiaowang Data</h2>
-                <p className="text-sm text-gray-600 mt-1">Upload both test and consultation data simultaneously to access complete functionality</p>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowXiaowangTestUpload(false)}
-                className="text-purple-500 hover:text-purple-700 hover:bg-purple-50"
-              >
-                ✕
-              </Button>
-            </div>
-            <XiaowangDualUpload
-              onTestUploadSuccess={(data) => {
-                console.log('小王测试数据上传成功，设置数据...', data);
-                if (data) {
-                  const newTestData = {
-                    adData: data.rawData || [],
-                    rawData: data.rawData || [], // 组件期望这个字段
-                    brokerData: brokerDataJson || [], // 使用现有的咨询数据，如果没有则为空数组
-                    summary: data.summary || {},
-                    dailyData: data.dailyData || []
-                  };
-                  console.log('设置小王测试数据:', newTestData);
-                  setXiaowangTestData(newTestData);
-                }
-                setSelectedAccount('xiaowang-test');
-              }}
-              onConsultationUploadSuccess={(data) => {
-                console.log('小王测试数据上传成功，设置数据...');
-                console.log('Received data:', data);
-                console.log('weekly_data length:', data?.weekly_data?.length || 0);
-                console.log('broker_data length:', data?.broker_data?.length || 0);
-                if (data) {
-                  updateAllData({
-                    broker_data: data.broker_data || [],
-                    weekly_data: data.weekly_data || [],
-                    monthly_data: data.monthly_data || [],
-                    daily_cost_data: data.daily_cost_data || []
-                  });
-                  // 同时更新小王测试数据的broker部分
-                  if (xiaowangTestData) {
-                    setXiaowangTestData({
-                      ...xiaowangTestData,
-                      brokerData: data.broker_data || []
-                    });
-                  }
-                }
-                setSelectedAccount('xiaowang');
-              }}
-            />
-          </div>
-        </div>
-      )}
 
       {/* All in One 上传模态框 */}
       {showAllInOneUpload && (

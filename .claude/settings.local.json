@@ -60,7 +60,8 @@
       "mcp__ide__getDiagnostics",
       "Bash(dir \"C:\\Users\\inter\\Desktop\\Simon-Edit-Marketing\\full data\")",
       "Bash(dir \"C:\\Users\\inter\\Desktop\\Simon-Edit-Marketing\\app\\api\\all-in-one-upload\")",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(xxd \"C:/Users/inter/co-marketing/co_marketing/AssistingFiles/BugAnalysis.md\")"
     ],
     "deny": []
   }

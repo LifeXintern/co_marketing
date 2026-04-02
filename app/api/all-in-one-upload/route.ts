@@ -159,25 +159,37 @@ export async function POST(request: NextRequest) {
 
         // Process broker data - EXACT match to excel-data route format (无日期转换)
         const brokerData = data.map((row: any, index: number) => {
-          // 使用与单个上传完全相同的字段映射和处理方式（无日期转换）
+          let dateStr = row['日期'] || row.date || '';
+
+          if (typeof dateStr === 'number') {
+            const dateObj = parseExcelDate(dateStr);
+            if (dateObj && !isNaN(dateObj.getTime())) {
+              dateStr = dateObj.toISOString().split('T')[0];
+            }
+          } else if (typeof dateStr === 'string') {
+            if (dateStr.includes('/')) {
+              const parts = dateStr.split('/');
+              if (parts.length === 3) {
+                const day = parts[0].padStart(2, '0');
+                const month = parts[1].padStart(2, '0');
+                let year = parseInt(parts[2]);
+                if (year < 100) year = year > 50 ? 1900 + year : 2000 + year;
+                dateStr = `${year}-${month}-${day}`;
+              }
+            } else {
+              const dateObj = new Date(dateStr);
+              if (!isNaN(dateObj.getTime())) {
+                dateStr = dateObj.toISOString().split('T')[0];
+              }
+            }
+          }
+
           const processedRow = {
             no: row['No.'] || row.no,
             broker: row['Broker'] || row.broker,
-            date: row['日期'] || row.date,  // 直接使用原始值，不进行转换
+            date: dateStr,
             wechat: row['微信'] || row.wechat,
             source: row['来源'] || row.source
-          }
-
-          if (index < 5) {
-            console.log(`=== Row ${index} Processing ===`)
-            console.log('Original row:', row)
-            console.log('Processed row:', processedRow)
-            console.log('Field mappings:')
-            console.log('  - No.: ', row['No.'], '||', row.no, '→', processedRow.no)
-            console.log('  - Broker: ', row['Broker'], '||', row.broker, '→', processedRow.broker)
-            console.log('  - Date: ', row['日期'], '||', row.date, '→', processedRow.date)
-            console.log('  - WeChat: ', row['微信'], '||', row.wechat, '→', processedRow.wechat)
-            console.log('  - Source: ', row['来源'], '||', row.source, '→', processedRow.source)
           }
 
           return processedRow
@@ -516,7 +528,7 @@ export async function POST(request: NextRequest) {
             clicks: parseInt(row['点击量'] || row['Clicks'] || row['点击'] || '0'),
             clickRate: parseFloat(row['点击率'] || row['Click Rate'] || row['CTR'] || '0'),
             avgClickCost: parseFloat(row['平均点击成本'] || row['CPC'] || row['单次点击成本'] || '0') / 4.7, // RMB转AUD
-            cpm: parseFloat(row['平均千次展现费用'] || row['CPM'] || row['千次曝光成本'] || '0') / 4.7, // RMB转AUD
+            cpm: (() => { const imp = parseInt(row['展现量'] || row['Impressions'] || '0'); return imp > 0 ? (parseFloat(row['消费'] || row['Spend'] || '0') / 4.7 / imp) * 1000 : 0 })(),
             likes: parseInt(row['点赞'] || row['Likes'] || '0'),
             comments: parseInt(row['评论'] || row['Comments'] || '0'),
             saves: parseInt(row['收藏'] || row['Saves'] || row['保存'] || '0'),
@@ -558,7 +570,6 @@ export async function POST(request: NextRequest) {
             ) / 4.7, // RMB转AUD
             // 兼容旧字段名
             ctr: parseFloat(row['点击率'] || row['CTR'] || '0'),
-            cpc: parseFloat(row['平均点击成本'] || row['CPC'] || row['单次点击成本'] || '0') / 4.7, // RMB转AUD，与单个上传一致
             views: parseInt(row['点击量'] || row['Clicks'] || row['点击'] || '0'), // 使用点击量作为views，与单个上传一致
             profileViews: parseInt(row['主页访问'] || row['Profile Views'] || '0'),
             engagementRate: parseFloat(row['互动率'] || row['Engagement Rate'] || '0'),
@@ -651,25 +662,16 @@ function processWeeklyDataFromBroker(brokerData: any[]): any[] {
   let validDates = 0
   let invalidDates = 0
 
-  brokerData.forEach((row: any, index: number) => {
-    const dateValue = row.date || row['日期']
+  brokerData.forEach((row: any) => {
+    const dateValue = row.date;
     if (!dateValue) {
-      if (index < 5) console.log(`Row ${index}: No date value found`)
       invalidDates++
       return
     }
 
-    let dateObj = null
-    if (typeof dateValue === 'number') {
-      dateObj = parseExcelDate(dateValue)
-      if (index < 5) console.log(`Row ${index}: Excel date ${dateValue} -> ${dateObj}`)
-    } else if (typeof dateValue === 'string') {
-      dateObj = new Date(dateValue)
-      if (index < 5) console.log(`Row ${index}: String date "${dateValue}" -> ${dateObj}`)
-    }
+    const dateObj = new Date(dateValue)
 
-    if (!dateObj || isNaN(dateObj.getTime())) {
-      if (index < 5) console.log(`Row ${index}: Invalid date conversion for ${dateValue}`)
+    if (isNaN(dateObj.getTime())) {
       invalidDates++
       return
     }
@@ -702,17 +704,12 @@ function processMonthlyDataFromBroker(brokerData: any[]): any[] {
   const monthlyMap = new Map()
 
   brokerData.forEach((row: any) => {
-    const dateValue = row.date || row['日期']
+    const dateValue = row.date;
     if (!dateValue) return
 
-    let dateObj = null
-    if (typeof dateValue === 'number') {
-      dateObj = parseExcelDate(dateValue)
-    } else if (typeof dateValue === 'string') {
-      dateObj = new Date(dateValue)
-    }
+    const dateObj = new Date(dateValue)
 
-    if (!dateObj || isNaN(dateObj.getTime())) return
+    if (isNaN(dateObj.getTime())) return
 
     const year = dateObj.getFullYear()
     const month = dateObj.getMonth() + 1
@@ -740,17 +737,8 @@ function processDailyDataFromBroker(brokerData: any[]): any[] {
   const dailyMap = new Map()
 
   brokerData.forEach((row: any) => {
-    const dateValue = row.date || row['日期']
-    if (!dateValue) return
-
-    let dateStr: string
-    if (typeof dateValue === 'number') {
-      const dateObj = parseExcelDate(dateValue)
-      if (!dateObj) return
-      dateStr = dateObj.toISOString().split('T')[0]
-    } else {
-      dateStr = dateValue.toString().split(' ')[0] // Remove time if present
-    }
+    const dateStr = row.date;
+    if (!dateStr) return
 
     if (!dailyMap.has(dateStr)) {
       dailyMap.set(dateStr, {

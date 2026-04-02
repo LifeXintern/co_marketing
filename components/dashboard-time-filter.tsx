@@ -35,7 +35,8 @@ export function DashboardTimeFilter({
   isSticky = false
 }: DashboardTimeFilterProps) {
   const minDate = selectedAccount === 'lifecar' ? "2025-05-01" : "2024-09-01";
-  const maxDate = "2025-12-31";
+  const today = new Date();
+  const maxDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
   if (isSticky) {
     return (

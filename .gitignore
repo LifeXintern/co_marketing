@@ -28,3 +28,6 @@ next-env.d.ts
 
 # uploaded data
 /public/lifecar-notes-data.json
+
+# assisting files (local analysis files, not for version control)
+/AssistingFiles/

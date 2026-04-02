@@ -61,74 +61,78 @@ export function parseLifeCarData(csvText: string): LifeCarDailyData[] {
   if (cleanText.charCodeAt(0) === 0xFEFF) {
     cleanText = cleanText.substring(1)
   }
-  
+
   const lines = cleanText.trim().split('\n')
   const data: LifeCarDailyData[] = []
-  
-  // 跳过标题行，从第二行开始
+
+  if (lines.length < 2) return data
+
+  // Build header name → column index map from the first row
+  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''))
+  const headerMap: Record<string, number> = {}
+  headers.forEach((h, i) => { headerMap[h] = i })
+
+  // Get a cell value by column name; accepts multiple fallback names for resilience
+  const col = (columns: string[], ...names: string[]): string => {
+    for (const name of names) {
+      const idx = headerMap[name]
+      if (idx !== undefined && columns[idx] !== undefined) {
+        return columns[idx].trim().replace(/^"|"$/g, '')
+      }
+    }
+    return ''
+  }
+
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i].trim()
     if (!line) continue
-    
-    // 检查是否包含"合计"，如果是则跳过这一行
     if (line.includes('合计')) continue
-    
+
     const columns = line.split(',')
-    // 检查列数，至少需要24列数据（有些列可能为空）
-    if (columns.length >= 24) {
-      const dateStr = columns[0]
-      
-      // 解析日期格式：支持两种格式 YYYY-MM-DD 和 DD/MM/YYYY
-      let formattedDate = ''
-      
-      if (dateStr && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
-        // 已经是 YYYY-MM-DD 格式
-        formattedDate = dateStr
-      } else if (dateStr && dateStr.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
-        // DD/MM/YYYY 格式，需要转换
-        const [day, month, year] = dateStr.split('/')
-        const paddedDay = day.padStart(2, '0')
-        const paddedMonth = month.padStart(2, '0')
-        formattedDate = `${year}-${paddedMonth}-${paddedDay}`
-      } else {
-        // 跳过无效日期格式的行
-        continue
-      }
-      
-      if (formattedDate) {
-        
-        data.push({
-          date: formattedDate,
-          spend: (parseFloat(columns[1]) || 0) / RMB_TO_AUD_RATE, // RMB转AUD
-          impressions: parseInt(columns[2]) || 0,
-          clicks: parseInt(columns[3]) || 0,
-          clickRate: parseFloat(columns[4]?.replace('%', '')) || 0,
-          avgClickCost: (parseFloat(columns[5]) || 0) / RMB_TO_AUD_RATE, // RMB转AUD
-          cpm: (parseFloat(columns[6]) || 0) / RMB_TO_AUD_RATE, // RMB转AUD
-          likes: parseInt(columns[7]) || 0,
-          comments: parseInt(columns[8]) || 0,
-          saves: parseInt(columns[9]) || 0,
-          followers: parseInt(columns[10]) || 0,
-          shares: parseInt(columns[11]) || 0,
-          interactions: parseInt(columns[12]) || 0,
-          avgInteractionCost: (parseFloat(columns[13]) || 0) / RMB_TO_AUD_RATE, // RMB转AUD
-          actionButtonClicks: parseInt(columns[14]) || 0,
-          actionButtonClickRate: parseFloat(columns[28]?.replace('%', '')) || 0,
-          screenshots: parseInt(columns[16]) || 0,
-          imageSaves: parseInt(columns[17]) || 0,
-          searchClicks: parseInt(columns[20]) || 0,
-          searchConversionRate: parseFloat(columns[21]?.replace('%', '')) || 0,
-          avgReadNotesAfterSearch: parseFloat(columns[22]) || 0,
-          readCountAfterSearch: parseInt(columns[23]) || 0,
-          multiConversion1: parseInt(columns[24]) || 0,
-          multiConversionCost1: (parseFloat(columns[25]) || 0) / RMB_TO_AUD_RATE, // RMB转AUD
-          multiConversion2: parseInt(columns[26]) || 0,
-          multiConversionCost2: (parseFloat(columns[27]) || 0) / RMB_TO_AUD_RATE // RMB转AUD
-        })
-      }
+
+    const dateRaw = col(columns, '时间', 'Date', '日期')
+
+    // 解析日期格式：支持三种格式 YYYY-MM-DD、YYYY-MM-DD HH:MM:SS 和 DD/MM/YYYY
+    let formattedDate = ''
+    if (dateRaw.match(/^\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2})?$/)) {
+      formattedDate = dateRaw.substring(0, 10)
+    } else if (dateRaw.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
+      const [day, month, year] = dateRaw.split('/')
+      formattedDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+    } else {
+      continue
     }
+
+    data.push({
+      date: formattedDate,
+      spend: (parseFloat(col(columns, '消费')) || 0) / RMB_TO_AUD_RATE,
+      impressions: parseInt(col(columns, '展现量')) || 0,
+      clicks: parseInt(col(columns, '点击量')) || 0,
+      clickRate: parseFloat(col(columns, '点击率').replace('%', '')) || 0,
+      avgClickCost: (parseFloat(col(columns, '平均点击成本')) || 0) / RMB_TO_AUD_RATE,
+      cpm: (() => { const imp = parseInt(col(columns, '展现量')) || 0; return imp > 0 ? ((parseFloat(col(columns, '消费')) || 0) / RMB_TO_AUD_RATE / imp) * 1000 : 0 })(),
+      likes: parseInt(col(columns, '点赞')) || 0,
+      comments: parseInt(col(columns, '评论')) || 0,
+      saves: parseInt(col(columns, '收藏')) || 0,
+      followers: parseInt(col(columns, '关注')) || 0,
+      shares: parseInt(col(columns, '分享')) || 0,
+      interactions: parseInt(col(columns, '互动量')) || 0,
+      avgInteractionCost: (parseFloat(col(columns, '平均互动成本')) || 0) / RMB_TO_AUD_RATE,
+      actionButtonClicks: parseInt(col(columns, '行动按钮点击量')) || 0,
+      actionButtonClickRate: parseFloat(col(columns, '行动按钮点击率').replace('%', '')) || 0,
+      screenshots: parseInt(col(columns, '截图')) || 0,
+      imageSaves: parseInt(col(columns, '保存图片')) || 0,
+      searchClicks: parseInt(col(columns, '搜索组件点击量')) || 0,
+      searchConversionRate: parseFloat(col(columns, '搜索组件点击转化率').replace('%', '')) || 0,
+      avgReadNotesAfterSearch: parseFloat(col(columns, '平均搜索后阅读笔记篇数')) || 0,
+      readCountAfterSearch: parseInt(col(columns, '搜后阅读量')) || 0,
+      multiConversion1: parseInt(col(columns, '新增种草人群', '多转化人数（添加企微+私信咨询）', '多转化人数(添加企微+私信咨询)')) || 0,
+      multiConversionCost1: (parseFloat(col(columns, '新增种草人群成本', '多转化成本（添加企微+私信咨询）', '多转化成本(添加企微+私信咨询)')) || 0) / RMB_TO_AUD_RATE,
+      multiConversion2: parseInt(col(columns, '新增深度种草人群', '多转化人数（添加企微成功+私信留资）', '多转化人数(添加企微成功+私信留资)')) || 0,
+      multiConversionCost2: (parseFloat(col(columns, '新增深度种草人群成本', '多转化成本（添加企微成功+私信留资）', '多转化成本(添加企微成功+私信留资)')) || 0) / RMB_TO_AUD_RATE,
+    })
   }
-  
+
   return data.sort((a, b) => a.date.localeCompare(b.date))
 }
 

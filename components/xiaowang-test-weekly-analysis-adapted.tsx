@@ -62,30 +62,7 @@ export function XiaowangTestWeeklyOverallAverage({ weeklyData = [], brokerData =
       brokerData.forEach(item => {
         if (!item || typeof item !== 'object') return
 
-        let dateValue: string | null = null
-
-        // Try different date field names
-        const dateFields = ['Date', 'date', '时间', 'Date ', 'date ']
-        for (const field of dateFields) {
-          if (item[field] !== undefined && item[field] !== null && item[field] !== '') {
-            if (typeof item[field] === 'number') {
-              // Excel serial number conversion
-              const excelDate = new Date((item[field] - 25569) * 86400 * 1000)
-              if (!isNaN(excelDate.getTime())) {
-                dateValue = excelDate.toISOString().split('T')[0]
-                break
-              }
-            } else if (typeof item[field] === 'string') {
-              // Try to parse string date
-              const parsedDate = new Date(item[field])
-              if (!isNaN(parsedDate.getTime())) {
-                dateValue = parsedDate.toISOString().split('T')[0]
-                break
-              }
-            }
-          }
-        }
-
+        const dateValue = item.date;
         if (dateValue) {
           leadsPerDate[dateValue] = (leadsPerDate[dateValue] || 0) + 1
         }
@@ -193,25 +170,9 @@ export function XiaowangTestWeeklyOverallAverage({ weeklyData = [], brokerData =
 
     // 日期解析函数
     const parseClientDate = (dateValue: any) => {
-      if (typeof dateValue === 'number') {
-        return new Date((dateValue - 25569) * 86400 * 1000);
-      } else if (typeof dateValue === 'string') {
-        if (dateValue.includes('/')) {
-          const parts = dateValue.split('/');
-          if (parts.length === 3) {
-            const month = parseInt(parts[0]);
-            const day = parseInt(parts[1]);
-            let year = parseInt(parts[2]);
-            if (year < 100) {
-              year = year > 50 ? 1900 + year : 2000 + year;
-            }
-            return new Date(year, month - 1, day);
-          }
-        } else {
-          return new Date(dateValue);
-        }
-      }
-      return null;
+      if (!dateValue) return null;
+      const parsed = new Date(dateValue);
+      return isNaN(parsed.getTime()) ? null : parsed;
     };
 
     // 根据selectedYear过滤broker数据
@@ -232,11 +193,11 @@ export function XiaowangTestWeeklyOverallAverage({ weeklyData = [], brokerData =
     // 计算实际的周数
     let actualWeeks = 1;
     if (minDate && maxDate) {
-      const daysDifference = Math.ceil((maxDate.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24));
+      const daysDifference = Math.ceil((maxDate!.getTime() - minDate!.getTime()) / (1000 * 60 * 60 * 24));
       actualWeeks = Math.ceil(daysDifference / 7);
       console.log('Overall Weekly Average 计算（新小王）:', {
-        minDate: minDate.toISOString().split('T')[0],
-        maxDate: maxDate.toISOString().split('T')[0],
+        minDate: minDate!.toISOString().split('T')[0],
+        maxDate: maxDate!.toISOString().split('T')[0],
         daysDifference,
         actualWeeks,
         totalLeads: filteredBrokerData.length,
@@ -367,30 +328,7 @@ export function XiaowangTestWeeklyAnalysisAdapted({ weeklyData = [], brokerData 
       brokerData.forEach(item => {
         if (!item || typeof item !== 'object') return
 
-        let dateValue: string | null = null
-
-        // Try different date field names
-        const dateFields = ['Date', 'date', '时间', 'Date ', 'date ']
-        for (const field of dateFields) {
-          if (item[field] !== undefined && item[field] !== null && item[field] !== '') {
-            if (typeof item[field] === 'number') {
-              // Excel serial number conversion
-              const excelDate = new Date((item[field] - 25569) * 86400 * 1000)
-              if (!isNaN(excelDate.getTime())) {
-                dateValue = excelDate.toISOString().split('T')[0]
-                break
-              }
-            } else if (typeof item[field] === 'string') {
-              // Try to parse string date
-              const parsedDate = new Date(item[field])
-              if (!isNaN(parsedDate.getTime())) {
-                dateValue = parsedDate.toISOString().split('T')[0]
-                break
-              }
-            }
-          }
-        }
-
+        const dateValue = item.date;
         if (dateValue) {
           leadsPerDate[dateValue] = (leadsPerDate[dateValue] || 0) + 1
         }
@@ -458,9 +396,7 @@ export function XiaowangTestWeeklyAnalysisAdapted({ weeklyData = [], brokerData 
 
     // Sort weeks chronologically
     weeks.sort((a, b) => {
-      const dateA = new Date(a.weekStart + ', ' + a.weekEnd.split(', ')[1])
-      const dateB = new Date(b.weekStart + ', ' + b.weekEnd.split(', ')[1])
-      return dateA.getTime() - dateB.getTime()
+      return a.weekEndDate.getTime() - b.weekEndDate.getTime()
     })
 
     // Calculate week-over-week changes

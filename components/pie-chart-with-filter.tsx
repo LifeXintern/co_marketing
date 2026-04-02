@@ -1,11 +1,9 @@
 "use client"
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useMemo } from 'react';
 import { WeeklyLeadsDistribution } from '@/components/weekly-leads-distribution';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 // 移除静态导入，改为接收props
 import { getDataRange } from '@/lib/date-utils';
 
@@ -97,16 +95,7 @@ export function PieChartWithFilter({ startDate = '', endDate = '', brokerData = 
     return processedBrokerData.reduce((sum, broker) => sum + broker.count, 0);
   }, [processedBrokerData]);
 
-  // Comment状态
-  const [comment, setComment] = useState('');
-  
-  // 从localStorage加载保存的评论
-  useEffect(() => {
-    const savedComment = localStorage.getItem('pieChartComment');
-    if (savedComment) {
-      setComment(savedComment);
-    }
-  }, []);
+
 
   return (
     <div className="p-6 flex flex-col h-full">
@@ -183,29 +172,7 @@ export function PieChartWithFilter({ startDate = '', endDate = '', brokerData = 
             </div>
           )}
         </div>
-        
-        {/* Comment输入框 */}
-        <div className="mt-3 p-4 bg-black rounded-lg border border-gray-600">
-          <Label htmlFor="pie-chart-comment" className="text-sm text-white font-montserrat font-semibold mb-2 block">
-            Comments & Notes
-          </Label>
-          <Textarea
-            id="pie-chart-comment"
-            placeholder="Add your comments or insights about the broker distribution..."
-            value={comment}
-            onChange={(e) => {
-              const newComment = e.target.value;
-              setComment(newComment);
-              localStorage.setItem('pieChartComment', newComment);
-            }}
-            className="w-full min-h-[80px] resize-none bg-gray-800 border-gray-600 text-white placeholder-gray-400 font-montserrat font-light focus:border-purple-400 focus:ring-purple-400/20"
-          />
-          {comment && (
-            <div className="mt-2 text-xs text-gray-400 font-montserrat font-light">
-              Character count: {comment.length}
-            </div>
-          )}
-        </div>
+
       </div>
     </div>
   );

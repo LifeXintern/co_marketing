@@ -141,9 +141,7 @@ export function XiaowangTestWeeklyAnalysis({
 
     // Sort weeks chronologically
     weeks.sort((a, b) => {
-      const dateA = new Date(a.weekStart + ', ' + a.weekEnd.split(', ')[1])
-      const dateB = new Date(b.weekStart + ', ' + b.weekEnd.split(', ')[1])
-      return dateA.getTime() - dateB.getTime()
+      return a.weekEndDate.getTime() - b.weekEndDate.getTime()
     })
 
     // Calculate week-over-week changes

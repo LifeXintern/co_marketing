@@ -1,9 +1,7 @@
 "use client"
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 // 移除静态导入，改为接收props
 
 interface BrokerWeeklyDonutChartProps {
@@ -83,7 +81,7 @@ function processBrokerWeeklyAverage(brokerDataJson: any[] = [], weeklyDataJson: 
     let totalWeeks = 1; // 默认至少1周
     if (allDataMinDate && allDataMaxDate) {
       // 计算日期范围跨越的实际周数
-      const daysDifference = Math.ceil((allDataMaxDate.getTime() - allDataMinDate.getTime()) / (1000 * 60 * 60 * 24));
+      const daysDifference = Math.ceil((allDataMaxDate!.getTime() - allDataMinDate!.getTime()) / (1000 * 60 * 60 * 24));
       totalWeeks = Math.ceil(daysDifference / 7); // 向上取整到周数
     }
     
@@ -107,8 +105,8 @@ function processBrokerWeeklyAverage(brokerDataJson: any[] = [], weeklyDataJson: 
     console.log('Broker每周平均数据:', {
       totalWeeks,
       dateRange: allDataMinDate && allDataMaxDate ? {
-        minDate: allDataMinDate.toISOString().split('T')[0],
-        maxDate: allDataMaxDate.toISOString().split('T')[0]
+        minDate: allDataMinDate!.toISOString().split('T')[0],
+        maxDate: allDataMaxDate!.toISOString().split('T')[0]
       } : null,
       allBrokerCounts,
       weeklyAverageData
@@ -155,16 +153,7 @@ export function BrokerWeeklyDonutChart({ startDate = '', endDate = '', brokerDat
     return processBrokerWeeklyAverage(brokerData, weeklyData);
   }, [brokerData, weeklyData]);
 
-  // Comment状态
-  const [comment, setComment] = useState('');
-  
-  // 从localStorage加载保存的评论
-  useEffect(() => {
-    const savedComment = localStorage.getItem('donutChartComment');
-    if (savedComment) {
-      setComment(savedComment);
-    }
-  }, []);
+
 
   // 渲染标签函数
   const renderLabel = (props: any) => {
@@ -259,12 +248,12 @@ export function BrokerWeeklyDonutChart({ startDate = '', endDate = '', brokerDat
       });
 
       if (minDate && maxDate) {
-        const daysDifference = Math.ceil((maxDate.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24));
+        const daysDifference = Math.ceil((maxDate!.getTime() - minDate!.getTime()) / (1000 * 60 * 60 * 24));
         actualWeeks = Math.ceil(daysDifference / 7);
         console.log('Avg Leads per Week 计算:', {
           totalLeads,
-          minDate: minDate.toISOString().split('T')[0],
-          maxDate: maxDate.toISOString().split('T')[0],
+          minDate: minDate!.toISOString().split('T')[0],
+          maxDate: maxDate!.toISOString().split('T')[0],
           daysDifference,
           actualWeeks,
           avgLeadsPerWeek: totalLeads / actualWeeks
@@ -355,29 +344,7 @@ export function BrokerWeeklyDonutChart({ startDate = '', endDate = '', brokerDat
             );
           })}
         </div>
-        
-        {/* Comment输入框 */}
-        <div className="mt-3 p-4 bg-black rounded-lg border border-gray-600">
-          <Label htmlFor="donut-chart-comment" className="text-sm font-semibold text-white mb-2 block font-montserrat">
-            Comments & Notes
-          </Label>
-          <Textarea
-            id="donut-chart-comment"
-            placeholder="Add your comments or insights about the broker weekly average performance..."
-            value={comment}
-            onChange={(e) => {
-              const newComment = e.target.value;
-              setComment(newComment);
-              localStorage.setItem('donutChartComment', newComment);
-            }}
-            className="w-full min-h-[80px] resize-none bg-gray-800 border-gray-600 text-white placeholder-gray-400 focus:border-purple-400 focus:ring-purple-400/20 font-montserrat font-light"
-          />
-          {comment && (
-            <div className="mt-2 text-xs text-gray-400 font-montserrat font-light">
-              Character count: {comment.length}
-            </div>
-          )}
-        </div>
+
       </div>
     </div>
   );
