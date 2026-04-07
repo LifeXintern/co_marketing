@@ -10,52 +10,57 @@ import { getDataRange } from '@/lib/date-utils';
 // 处理饼图数据 - 使用真实Excel数据中的 Broker 列，支持时间筛选
 function processBrokerData(brokerDataJson: any[], startDate?: string, endDate?: string) {
   try {
+    const today = new Date()
     let clientsData = brokerDataJson || []
-    
+
     // 如果有时间筛选，过滤数据
     if (startDate && endDate) {
-      const start = new Date(startDate)
-      const end = new Date(endDate)
-      end.setHours(23, 59, 59, 999) // 设置为当天结束时间
-      
       clientsData = clientsData.filter((client: any) => {
-        // Convert Excel date serial number to JavaScript Date
-        const excelBase = new Date(1899, 11, 30);
-        const clientDate = new Date(excelBase.getTime() + client.date * 24 * 60 * 60 * 1000);
-        
-        // 规范化到同一天的开始时间进行比较
-        const clientDateOnly = new Date(clientDate.getFullYear(), clientDate.getMonth(), clientDate.getDate())
-        const startDateOnly = new Date(start.getFullYear(), start.getMonth(), start.getDate())
-        const endDateOnly = new Date(end.getFullYear(), end.getMonth(), end.getDate())
-        
-        return clientDateOnly >= startDateOnly && clientDateOnly <= endDateOnly
+        const dateStr: string = client.date
+        if (!dateStr) return false
+        // date is stored as YYYY-MM-DD string — compare directly
+        return dateStr >= startDate && dateStr <= endDate
       })
     }
-    
+
     // 统计每个 Broker 的客户数量
     const brokerCounts = clientsData.reduce((acc: any, client: any) => {
-      let broker = client.broker || 'Unknown'
-      
-      // Normalize broker names - 将 Yuki 和若凡合并，将Zoey合并到小助手
-      if (broker.toLowerCase() === 'yuki') {
+      const rawBroker = (client.broker || '').trim()
+      const dateStr: string = client.date || ''
+      let broker: string
+
+      if (!rawBroker) {
+        // Empty broker: "External Broker" from 2026-03-30 onwards; otherwise ignored
+        broker = dateStr >= '2026-03-30' ? 'External Broker' : 'Unknown'
+      } else if (
+        rawBroker === '小助手' ||
+        rawBroker === '小助理' ||
+        rawBroker.toLowerCase() === 'zoey'
+      ) {
+        // 90-day rule: leads stuck in 小助手/小助理 > 90 days are considered lost
+        if (dateStr) {
+          const leadDate = new Date(dateStr + 'T00:00:00')
+          const daysSinceLead = (today.getTime() - leadDate.getTime()) / (1000 * 60 * 60 * 24)
+          broker = daysSinceLead > 90 ? 'Unknown' : 'Pending Assignment'
+        } else {
+          broker = 'Unknown'
+        }
+      } else if (rawBroker.toLowerCase() === 'yuki') {
         broker = 'Yuki/Ruofan'
-      } else if (broker.toLowerCase() === 'ruofan') {
+      } else if (rawBroker.toLowerCase() === 'ruofan') {
         broker = 'Yuki/Ruofan'
-      } else if (broker === 'Linudo') {
+      } else if (rawBroker === 'Linudo') {
         broker = 'Linduo'
-      } else if (broker.toLowerCase() === 'ziv') {
+      } else if (rawBroker.toLowerCase() === 'ziv') {
         broker = 'Ziv'
-      } else if (broker.toLowerCase() === 'zoey') {
-        broker = '小助手'
-      } else if (broker === '小助手') {
-        broker = '小助手'
+      } else {
+        broker = rawBroker
       }
-      
+
       acc[broker] = (acc[broker] || 0) + 1
       return acc
     }, {})
 
-    // 过滤掉不需要的broker - 移除 ruofan，因为已经与 Yuki 合并；Zoey已合并到小助手
     const excludeBrokers = ['Unknown'];
     const filteredBrokers = Object.entries(brokerCounts)
       .filter(([broker, count]: [string, any]) => {
@@ -136,10 +141,11 @@ export function PieChartWithFilter({ startDate = '', endDate = '', brokerData = 
                 const fixedBrokerColors: { [key: string]: string } = {
                   'Ziv': '#FF8C00',
                   'Yuki/Ruofan': '#751fae',
-                  'Jo': '#a2e329', 
+                  'Jo': '#a2e329',
                   'Amy': '#3cbde5',
-                  '小助手': '#B07AA1',
+                  'Pending Assignment': '#95A5A6',
                   'Linduo': '#8f4abc',
+                  'External Broker': '#4A90D9',
                 };
                 
                 // 直接返回预定义的颜色，不再使用动态逻辑

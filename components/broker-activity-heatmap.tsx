@@ -10,38 +10,64 @@ function processActivityHeatmapData(brokerDataJson: any[] = []) {
   try {
     const clientsData = brokerDataJson || [];
     
+    const today = new Date();
+
+    // Parse client date — supports both YYYY-MM-DD strings and Excel serial numbers
+    const parseDate = (dateValue: any): Date | null => {
+      if (typeof dateValue === 'string' && dateValue.match(/^\d{4}-\d{2}-\d{2}/)) {
+        return new Date(dateValue + 'T00:00:00');
+      }
+      if (typeof dateValue === 'number') {
+        return new Date((dateValue - 25569) * 86400 * 1000);
+      }
+      return null;
+    };
+
+    // Normalize broker name with 90-day rule for 小助手/小助理 and External Broker for empty
+    const normalizeBroker = (rawBroker: string, dateStr: string): string => {
+      const b = (rawBroker || '').trim();
+      if (!b) return dateStr >= '2026-03-30' ? 'External Broker' : 'Unknown';
+      if (b === '小助手' || b === '小助理' || b.toLowerCase() === 'zoey') {
+        if (dateStr) {
+          const leadDate = new Date(dateStr + 'T00:00:00');
+          const days = (today.getTime() - leadDate.getTime()) / (1000 * 60 * 60 * 24);
+          return days > 90 ? 'Unknown' : 'Pending Assignment';
+        }
+        return 'Unknown';
+      }
+      if (b.toLowerCase() === 'yuki') return 'Yuki';
+      if (b === 'Linudo') return 'Linduo';
+      if (b.toLowerCase() === 'ziv') return 'Ziv';
+      return b;
+    };
+
     // 获取主要的broker（过滤掉leads少于5的）
     const brokerCounts = clientsData.reduce((acc: any, client: any) => {
-      let broker = client.broker || 'Unknown';
-      if (broker.toLowerCase() === 'yuki') broker = 'Yuki';
-      else if (broker === 'Linudo') broker = 'Linduo';
-      else if (broker.toLowerCase() === 'ziv') broker = 'Ziv';
+      const clientDate = parseDate(client.date);
+      const dateStr = clientDate ? clientDate.toISOString().split('T')[0] : '';
+      const broker = normalizeBroker(client.broker, dateStr);
       acc[broker] = (acc[broker] || 0) + 1;
       return acc;
     }, {});
-    
+
     const allBrokers = Object.entries(brokerCounts)
       .filter(([broker, count]: [string, any]) => count >= 5 && broker !== 'Unknown')
       .map(([broker]) => broker);
-    
-    // 按指定顺序排列：Jo, Amy, Yuki, Ziv, Linduo, Zoey, 小助手
-    const preferredOrder = ['Jo', 'Amy', 'Yuki', 'Ziv', 'Linduo', 'Zoey', '小助手'];
+
+    // 按指定顺序排列
+    const preferredOrder = ['Jo', 'Amy', 'Yuki', 'Ziv', 'Linduo', 'Pending Assignment', 'External Broker'];
     const mainBrokers = preferredOrder.filter(broker => allBrokers.includes(broker));
 
     // 创建月份和broker的二维数组
     const monthBrokerMatrix: { [month: string]: { [broker: string]: number } } = {};
-    
+
     clientsData.forEach((client: any) => {
-      // 转换Excel日期
-      const excelEpoch = new Date(1900, 0, 1).getTime() - 2 * 24 * 60 * 60 * 1000;
-      const clientDate = new Date(excelEpoch + (client.date - 1) * 24 * 60 * 60 * 1000);
+      const clientDate = parseDate(client.date);
+      if (!clientDate || isNaN(clientDate.getTime())) return;
       const monthKey = `${clientDate.getFullYear()}-${String(clientDate.getMonth() + 1).padStart(2, '0')}`;
-      
-      let broker = client.broker || 'Unknown';
-      if (broker.toLowerCase() === 'yuki') broker = 'Yuki';
-      else if (broker === 'Linudo') broker = 'Linduo';
-      else if (broker.toLowerCase() === 'ziv') broker = 'Ziv';
-      
+      const dateStr = clientDate.toISOString().split('T')[0];
+      const broker = normalizeBroker(client.broker, dateStr);
+
       if (!mainBrokers.includes(broker)) return;
       
       if (!monthBrokerMatrix[monthKey]) {

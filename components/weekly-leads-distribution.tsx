@@ -22,8 +22,9 @@ const getBrokerColor = (brokerName: string, index: number) => {
     'Yuki/Ruofan': '#751fae',
     'Jo': '#a2e329',
     'Amy': '#3cbde5',
-    '小助手': '#B07AA1',
+    'Pending Assignment': '#95A5A6',
     'Linduo': '#8f4abc',
+    'External Broker': '#4A90D9',
   };
   
   // 直接返回预定义的颜色，不再使用动态逻辑

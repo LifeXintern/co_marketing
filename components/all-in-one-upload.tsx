@@ -261,7 +261,7 @@ export function AllInOneUpload({ onUploadSuccess }: AllInOneUploadProps) {
                   <AlertCircle className="h-3 w-3 text-gray-400" />
                 }
                 <span className={processedData.xiaowangMessage ? 'text-green-700' : 'text-gray-500'}>
-                  XiaoWang Message Data (小王私信)
+                  Message Data (小王投放 + LifeCar投放)
                 </span>
               </div>
               <div className="flex items-center gap-2 text-sm">

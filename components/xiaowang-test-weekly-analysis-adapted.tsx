@@ -5,7 +5,6 @@ import React, { useMemo, useState } from 'react';
 interface XiaowangTestWeeklyAnalysisAdaptedProps {
   weeklyData?: any[];
   brokerData?: any[];
-  xiaowangMessageData?: any[];
   startDate?: string;
   endDate?: string;
 }
@@ -30,8 +29,8 @@ interface WeeklyMetrics {
   costPerLeadChange?: number
 }
 
-export function XiaowangTestWeeklyOverallAverage({ weeklyData = [], brokerData = [], xiaowangMessageData = [], startDate, endDate }: XiaowangTestWeeklyAnalysisAdaptedProps) {
-  const [selectedYear, setSelectedYear] = useState<string>('2025');
+export function XiaowangTestWeeklyOverallAverage({ weeklyData = [], brokerData = [], startDate, endDate }: XiaowangTestWeeklyAnalysisAdaptedProps) {
+  const [selectedYear, setSelectedYear] = useState<string>('all');
 
   // Process data to get weekly metrics - same logic as original XiaowangTestWeeklyAnalysis
   const weeklyMetrics = useMemo(() => {
@@ -42,18 +41,12 @@ export function XiaowangTestWeeklyOverallAverage({ weeklyData = [], brokerData =
     // Create a map of leads by date from broker data
     const leadsPerDate: Record<string, number> = {}
 
-    // Create a map of message conversion counts by date from xiaowangMessageData
+    // Build message per date from conversions already in weeklyData (activeTestData.dailyData)
     const messagePerDate: Record<string, number> = {}
-
-    if (xiaowangMessageData && Array.isArray(xiaowangMessageData)) {
-      xiaowangMessageData.forEach(item => {
-        if (!item || typeof item !== 'object') return
-
-        const date = item.date
-        const conversionCount = item.conversionCount || 0
-
-        if (date) {
-          messagePerDate[date] = (messagePerDate[date] || 0) + conversionCount
+    if (weeklyData && Array.isArray(weeklyData)) {
+      weeklyData.forEach((item: any) => {
+        if (item.date && item.conversions) {
+          messagePerDate[item.date] = (messagePerDate[item.date] || 0) + item.conversions
         }
       })
     }
@@ -129,7 +122,7 @@ export function XiaowangTestWeeklyOverallAverage({ weeklyData = [], brokerData =
     })
 
     return weeks
-  }, [weeklyData, brokerData, xiaowangMessageData])
+  }, [weeklyData, brokerData])
 
   // Get available years from the data
   const availableYears = useMemo(() => {
@@ -223,7 +216,7 @@ export function XiaowangTestWeeklyOverallAverage({ weeklyData = [], brokerData =
       avgRednoteMessage: totals.totalRednoteMessage / actualWeeks,  // 使用实际周数
       totalWeeks: actualWeeks,  // 显示实际周数
     }
-  }, [filteredMetrics, brokerData, xiaowangMessageData, selectedYear])
+  }, [filteredMetrics, brokerData, selectedYear])
 
   return (
     <div className="bg-white/95 backdrop-blur-xl rounded-lg shadow-lg border border-gray-200/50 p-6">
@@ -233,13 +226,13 @@ export function XiaowangTestWeeklyOverallAverage({ weeklyData = [], brokerData =
             <span className="text-purple-600 text-lg">📊</span>
           </div>
           <h3 className="text-lg font-semibold text-gray-800 font-montserrat">
-            Overall Weekly Average {selectedYear === 'all' ? '(All Time)' : `(${selectedYear})`}
+            Overall Weekly Average
           </h3>
         </div>
         <select
           value={selectedYear}
           onChange={(e) => setSelectedYear(e.target.value)}
-          className="px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all duration-200"
+          className="px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-lg font-semibold text-gray-700 hover:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent transition-all duration-200"
         >
           <option value="all">All Years</option>
           {availableYears.map(year => (
@@ -284,7 +277,7 @@ export function XiaowangTestWeeklyOverallAverage({ weeklyData = [], brokerData =
   )
 }
 
-export function XiaowangTestWeeklyAnalysisAdapted({ weeklyData = [], brokerData = [], xiaowangMessageData = [], startDate, endDate }: XiaowangTestWeeklyAnalysisAdaptedProps) {
+export function XiaowangTestWeeklyAnalysisAdapted({ weeklyData = [], brokerData = [], startDate, endDate }: XiaowangTestWeeklyAnalysisAdaptedProps) {
   // State to control how many weeks to display
   const [selectedWeeks, setSelectedWeeks] = useState<number>(12)
 
@@ -308,18 +301,12 @@ export function XiaowangTestWeeklyAnalysisAdapted({ weeklyData = [], brokerData 
     // Create a map of leads by date from broker data
     const leadsPerDate: Record<string, number> = {}
 
-    // Create a map of message conversion counts by date from xiaowangMessageData
+    // Build message per date from conversions already in weeklyData (activeTestData.dailyData)
     const messagePerDate: Record<string, number> = {}
-
-    if (xiaowangMessageData && Array.isArray(xiaowangMessageData)) {
-      xiaowangMessageData.forEach(item => {
-        if (!item || typeof item !== 'object') return
-
-        const date = item.date
-        const conversionCount = item.conversionCount || 0
-
-        if (date) {
-          messagePerDate[date] = (messagePerDate[date] || 0) + conversionCount
+    if (weeklyData && Array.isArray(weeklyData)) {
+      weeklyData.forEach((item: any) => {
+        if (item.date && item.conversions) {
+          messagePerDate[item.date] = (messagePerDate[item.date] || 0) + item.conversions
         }
       })
     }
@@ -429,7 +416,7 @@ export function XiaowangTestWeeklyAnalysisAdapted({ weeklyData = [], brokerData 
 
     // Reverse to show latest week first, and show only selected number of weeks
     return weeks.reverse().slice(0, selectedWeeks)
-  }, [weeklyData, brokerData, xiaowangMessageData, selectedWeeks])
+  }, [weeklyData, brokerData, selectedWeeks])
 
   const formatNumber = (num: number) => {
     if (num >= 1000000) {

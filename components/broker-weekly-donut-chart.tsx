@@ -17,16 +17,33 @@ function processBrokerWeeklyAverage(brokerDataJson: any[] = [], weeklyDataJson: 
   try {
     let clientsData = brokerDataJson || [];
     
-    // 标准化broker名称的函数 - 将 Yuki 和若凡合并，将Zoey合并到小助手
-    const normalizeBrokerName = (broker: string) => {
-      if (!broker) return 'Unknown';
-      if (broker.toLowerCase() === 'yuki') return 'Yuki/Ruofan';
-      if (broker.toLowerCase() === 'ruofan') return 'Yuki/Ruofan';
-      if (broker === 'Linudo') return 'Linduo';
-      if (broker.toLowerCase() === 'ziv') return 'Ziv';
-      if (broker.toLowerCase() === 'zoey') return '小助手';
-      if (broker === '小助手') return '小助手';
-      return broker;
+    const today = new Date();
+
+    // 标准化broker名称的函数 - 带日期用于90天规则和External Broker判断
+    const normalizeBrokerName = (broker: string, dateStr: string) => {
+      const rawBroker = (broker || '').trim();
+      if (!rawBroker) {
+        // Empty broker: "External Broker" from 2026-03-30 onwards; otherwise ignored
+        return dateStr >= '2026-03-30' ? 'External Broker' : 'Unknown';
+      }
+      if (
+        rawBroker === '小助手' ||
+        rawBroker === '小助理' ||
+        rawBroker.toLowerCase() === 'zoey'
+      ) {
+        // 90-day rule: leads stuck > 90 days are considered lost
+        if (dateStr) {
+          const leadDate = new Date(dateStr + 'T00:00:00');
+          const daysSinceLead = (today.getTime() - leadDate.getTime()) / (1000 * 60 * 60 * 24);
+          return daysSinceLead > 90 ? 'Unknown' : 'Pending Assignment';
+        }
+        return 'Unknown';
+      }
+      if (rawBroker.toLowerCase() === 'yuki') return 'Yuki/Ruofan';
+      if (rawBroker.toLowerCase() === 'ruofan') return 'Yuki/Ruofan';
+      if (rawBroker === 'Linudo') return 'Linduo';
+      if (rawBroker.toLowerCase() === 'ziv') return 'Ziv';
+      return rawBroker;
     };
     
     // 解析日期的函数 - 支持All-in-One的YYYY-MM-DD格式
@@ -72,7 +89,8 @@ function processBrokerWeeklyAverage(brokerDataJson: any[] = [], weeklyDataJson: 
         if (!allDataMaxDate || clientDate > allDataMaxDate) allDataMaxDate = clientDate;
         
         // 统计broker总数
-        const broker = normalizeBrokerName(client.broker);
+        const dateStr = clientDate.toISOString().split('T')[0];
+        const broker = normalizeBrokerName(client.broker, dateStr);
         allBrokerCounts[broker] = (allBrokerCounts[broker] || 0) + 1;
       }
     });
@@ -131,11 +149,12 @@ const getBrokerColor = (brokerName: string, index: number = 0) => {
   // 锁死的broker颜色映射（基于当前数据的顺序）
   const fixedBrokerColors: { [key: string]: string } = {
     'Ziv': '#FF8C00',
-    'Yuki/Ruofan': '#751fae', 
+    'Yuki/Ruofan': '#751fae',
     'Jo': '#a2e329',
     'Amy': '#3cbde5',
-    '小助手': '#B07AA1',
+    'Pending Assignment': '#95A5A6',
     'Linduo': '#8f4abc',
+    'External Broker': '#4A90D9',
   };
   
   // 直接返回预定义的颜色，不再使用动态index

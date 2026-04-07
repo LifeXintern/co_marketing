@@ -4,29 +4,34 @@ import { parse } from 'csv-parse/sync'
 import { getNotesStore as getLifeCarNotesStore } from '@/app/api/lifecar-notes/notes-store'
 import { getXiaoWangTestNotesStore } from '@/app/api/xiaowang-test-notes/notes-store'
 
-// Helper function to parse Excel date - 支持 DD/MM/YYYY 格式
-function parseExcelDate(excelDate: any): Date | null {
+// Helper function to process Excel dates keeping them in pure UTC to avoid local timezone biases
+function formatExcelDateStr(excelDate: any): string | null {
   if (typeof excelDate === 'number') {
     // Excel date serial number
-    const excelBase = new Date(1899, 11, 30);
-    return new Date(excelBase.getTime() + excelDate * 24 * 60 * 60 * 1000);
+    const dt = new Date(Date.UTC(1899, 11, 30) + excelDate * 24 * 60 * 60 * 1000);
+    return dt.toISOString().split('T')[0];
   } else if (typeof excelDate === 'string') {
     // 处理 DD/MM/YYYY 格式 (如: "19/09/2024")
     if (excelDate.includes('/')) {
       const parts = excelDate.split('/');
       if (parts.length === 3) {
-        const day = parseInt(parts[0]);
-        const month = parseInt(parts[1]);
+        const day = parts[0].padStart(2, '0');
+        const month = parts[1].padStart(2, '0');
         let year = parseInt(parts[2]);
         if (year < 100) {
           year = year > 50 ? 1900 + year : 2000 + year;
         }
-        return new Date(year, month - 1, day); // month - 1 因为JS月份从0开始
+        return `${year}-${month}-${day}`;
       }
     }
     // 尝试其他格式
-    const date = new Date(excelDate);
-    return isNaN(date.getTime()) ? null : date;
+    const dateObj = new Date(excelDate);
+    if (!isNaN(dateObj.getTime())) {
+      const year = dateObj.getFullYear();
+      const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+      const day = dateObj.getDate().toString().padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
   }
   return null;
 }
@@ -101,7 +106,7 @@ export async function POST(request: NextRequest) {
     console.log('Looking for these sheets:')
     console.log('- Clients_info (for XiaoWang consultation)')
     console.log('- 小王投放 (for XiaoWang advertising)')
-    console.log('- 小王私信 (for XiaoWang messages)')
+    console.log('- 小王投放 and LifeCar投放 (多转化人数 column used for Message metric)')
     console.log('- 小王笔记 (for XiaoWang notes)')
     console.log('- Lifecar投放 (for LifeCar data)')
     console.log('- Lifecar笔记 (for LifeCar notes)')
@@ -161,27 +166,17 @@ export async function POST(request: NextRequest) {
         const brokerData = data.map((row: any, index: number) => {
           let dateStr = row['日期'] || row.date || '';
 
-          if (typeof dateStr === 'number') {
-            const dateObj = parseExcelDate(dateStr);
-            if (dateObj && !isNaN(dateObj.getTime())) {
-              dateStr = dateObj.toISOString().split('T')[0];
+          // Add fallback to find key by dynamic string match if strictly '日期' returned undefined
+          if (!dateStr) {
+            const dateKey = Object.keys(row).find(k => k.toLowerCase().includes('date') || k.includes('日期') || k.trim() === '日期');
+            if (dateKey) {
+              dateStr = row[dateKey];
             }
-          } else if (typeof dateStr === 'string') {
-            if (dateStr.includes('/')) {
-              const parts = dateStr.split('/');
-              if (parts.length === 3) {
-                const day = parts[0].padStart(2, '0');
-                const month = parts[1].padStart(2, '0');
-                let year = parseInt(parts[2]);
-                if (year < 100) year = year > 50 ? 1900 + year : 2000 + year;
-                dateStr = `${year}-${month}-${day}`;
-              }
-            } else {
-              const dateObj = new Date(dateStr);
-              if (!isNaN(dateObj.getTime())) {
-                dateStr = dateObj.toISOString().split('T')[0];
-              }
-            }
+          }
+
+          const formatted = formatExcelDateStr(dateStr);
+          if (formatted) {
+            dateStr = formatted;
           }
 
           const processedRow = {
@@ -365,81 +360,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Process XiaoWang Messages (小王私信 sheet)
-    console.log('🔍 Checking for 小王私信 sheet...')
-    console.log('Available sheet names:', workbook.SheetNames)
-    console.log('Exact match check:', workbook.SheetNames.includes('小王私信'))
-
-    if (workbook.SheetNames.includes('小王私信')) {
-      try {
-        console.log('✅ Found 小王私信 sheet, processing...')
-        const sheet = workbook.Sheets['小王私信']
-        const data = XLSX.utils.sheet_to_json(sheet)
-        console.log('Raw 小王私信 data rows:', data.length)
-        console.log('First row columns:', data[0] ? Object.keys(data[0]) : 'NO DATA')
-
-        const messageData = data.map((row: any, index: number) => {
-          // 转换Excel序列号日期为YYYY-MM-DD格式
-          const rawDate = row['时间'] || '';
-          let formattedDate = rawDate;
-
-          if (typeof rawDate === 'number') {
-            // Excel date serial number to Date object
-            const dateObj = new Date((rawDate - 25569) * 86400 * 1000);
-            if (!isNaN(dateObj.getTime())) {
-              formattedDate = dateObj.toISOString().split('T')[0]; // YYYY-MM-DD
-            }
-          } else if (typeof rawDate === 'string' && rawDate.includes('/')) {
-            // Handle D/M/YYYY format (如 "1/9/2024")
-            const parts = rawDate.split('/');
-            if (parts.length === 3) {
-              const day = parts[0].padStart(2, '0');
-              const month = parts[1].padStart(2, '0');
-              const year = parts[2];
-              formattedDate = `${year}-${month}-${day}`;
-            }
-          }
-
-          // 读取转化人数 - 支持全角和半角括号
-          const conversionCount = row['多转化人数（添加企微+私信咨询）']
-            || row['多转化人数(添加企微+私信咨询)']
-            || row['多转化人数']
-            || 0;
-
-          // 调试前5行数据
-          if (index < 5) {
-            console.log(`XiaoWang Message Row ${index}:`);
-            console.log(`  - Raw row data:`, row);
-            console.log(`  - Date field (时间):`, row['时间']);
-            console.log(`  - Date conversion: "${rawDate}" -> "${formattedDate}"`);
-            console.log(`  - Conversion field (多转化人数（添加企微+私信咨询）):`, row['多转化人数（添加企微+私信咨询）']);
-            console.log(`  - Conversion field (多转化人数(添加企微+私信咨询)):`, row['多转化人数(添加企微+私信咨询)']);
-            console.log(`  - Selected conversion value:`, conversionCount);
-            console.log(`  - Parsed conversion count:`, parseInt(conversionCount.toString()));
-          }
-
-          return {
-            date: formattedDate,  // YYYY-MM-DD格式的日期字符串
-            conversionCount: parseInt(conversionCount.toString())
-          }
-        })
-
-        console.log('📊 Processed messageData summary:');
-        console.log('  - Total rows:', messageData.length);
-        console.log('  - Sample data:', messageData.slice(0, 3));
-        console.log('  - Total conversions:', messageData.reduce((sum, item) => sum + item.conversionCount, 0));
-
-        processedData.xiaowangMessage = messageData
-        processed.xiaowangMessage = true
-        console.log(`✅ Processed ${data.length} XiaoWang message records`)
-      } catch (error) {
-        console.error('❌ Error processing 小王私信 sheet:', error)
-      }
-    } else {
-      console.log('⚠️ Sheet "小王私信" not found in uploaded Excel file')
-      console.log('Available sheets:', workbook.SheetNames)
-    }
-
     // Process XiaoWang Notes (小王笔记 sheet)
     if (workbook.SheetNames.includes('小王笔记')) {
       try {
@@ -495,24 +415,9 @@ export async function POST(request: NextRequest) {
           // 处理日期 - 需要转换为YYYY-MM-DD格式，以便前端正常使用
           let dateStr = row['时间'] || row['Date'] || row['日期'] || ''
 
-          // 如果是Excel序列号，转换为YYYY-MM-DD格式
-          if (typeof dateStr === 'number') {
-            const dateObj = parseExcelDate(dateStr)
-            if (dateObj) {
-              const year = dateObj.getFullYear()
-              const month = (dateObj.getMonth() + 1).toString().padStart(2, '0')
-              const day = dateObj.getDate().toString().padStart(2, '0')
-              dateStr = `${year}-${month}-${day}` // YYYY-MM-DD格式
-            }
-          } else if (typeof dateStr === 'string' && dateStr.includes('/')) {
-            // 处理 D/M/YYYY 或 DD/MM/YYYY 格式
-            const parts = dateStr.split('/')
-            if (parts.length === 3) {
-              const day = parts[0].padStart(2, '0')
-              const month = parts[1].padStart(2, '0')
-              const year = parts[2]
-              dateStr = `${year}-${month}-${day}` // 转换为YYYY-MM-DD
-            }
+          const formatted = formatExcelDateStr(dateStr);
+          if (formatted) {
+            dateStr = formatted;
           }
 
           // 调试前几行
@@ -634,6 +539,31 @@ export async function POST(request: NextRequest) {
         console.error('Error processing Lifecar笔记 sheet:', error)
       }
     }
+
+    // Compute combined Message metric (多转化人数(添加企微+私信咨询)) from 小王投放 + LifeCar投放
+    const messageMap: Record<string, number> = {}
+
+    if (processedData.xiaowangAdvertising?.dailyData) {
+      (processedData.xiaowangAdvertising.dailyData as any[]).forEach((day: any) => {
+        if (day.date && (day.conversions || 0) > 0) {
+          messageMap[day.date] = (messageMap[day.date] || 0) + day.conversions
+        }
+      })
+    }
+
+    if (processedData.lifecarData) {
+      (processedData.lifecarData as any[]).forEach((row: any) => {
+        if (row.date && (row.multiConversion1 || 0) > 0) {
+          messageMap[row.date] = (messageMap[row.date] || 0) + row.multiConversion1
+        }
+      })
+    }
+
+    processedData.xiaowangMessage = Object.entries(messageMap)
+      .map(([date, conversionCount]) => ({ date, conversionCount }))
+      .sort((a, b) => a.date.localeCompare(b.date))
+    processed.xiaowangMessage = processedData.xiaowangMessage.length > 0
+    console.log(`Computed combined Message data from 小王投放 + LifeCar投放: ${processedData.xiaowangMessage.length} days`)
 
     // Return all processed data
     return NextResponse.json({

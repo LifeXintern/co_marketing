@@ -6,6 +6,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { formatDateWithWeekday } from "@/lib/date-utils"
 
+function parseDateField(val: any): string {
+  if (typeof val === 'string') return val.split(' ')[0]
+  if (typeof val === 'number') {
+    const d = new Date((val - 25569) * 86400 * 1000)
+    return isNaN(d.getTime()) ? '' : d.toISOString().split('T')[0]
+  }
+  return ''
+}
+
 interface XiaowangTestCostAnalysisProps {
   xiaowangTestData?: any
   brokerData?: any[]
@@ -364,7 +373,7 @@ export function XiaowangTestCostAnalysis({
     // Find all posts for this date
     return notesData.filter(note => {
       if (!note.发布时间) return false
-      const noteDate = note.发布时间.split(' ')[0] // Extract date part
+      const noteDate = parseDateField(note.发布时间) // Extract date part
       return noteDate === targetDate
     })
   }
@@ -955,7 +964,7 @@ export function XiaowangTestCostAnalysis({
                   const hasNotesForDate = isSevenDayRange && isFiltered && props.payload && notesData.length > 0 &&
                     notesData.some(note => {
                       if (!note.发布时间) return false
-                      const noteDate = note.发布时间.split(' ')[0] // Extract date part
+                      const noteDate = parseDateField(note.发布时间) // Extract date part
                       return noteDate === props.payload.date
                     })
 

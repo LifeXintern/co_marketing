@@ -9,7 +9,6 @@ import { formatDateWithWeekday } from "@/lib/date-utils"
 interface XiaowangTestCampaignOverviewProps {
   xiaowangTestData?: any
   brokerData?: any[]
-  xiaowangMessageData?: any[]
   startDate?: string
   endDate?: string
 }
@@ -28,7 +27,6 @@ interface DailyMetrics {
 function processDataForCampaignOverview(
   xiaowangTestData: any,
   brokerData: any[],
-  xiaowangMessageData: any[],
   startDate?: string,
   endDate?: string
 ): DailyMetrics[] {
@@ -73,22 +71,6 @@ function processDataForCampaignOverview(
     })
   }
 
-  // Create a map of message conversion counts by date from xiaowangMessageData
-  const messagePerDate: Record<string, number> = {}
-
-  if (xiaowangMessageData && Array.isArray(xiaowangMessageData)) {
-    xiaowangMessageData.forEach(item => {
-      if (!item || typeof item !== 'object') return
-
-      const date = item.date
-      const conversionCount = item.conversionCount || 0
-
-      if (date) {
-        messagePerDate[date] = (messagePerDate[date] || 0) + conversionCount
-      }
-    })
-  }
-
   // Filter and process daily data
   let filteredData = xiaowangTestData.dailyData
 
@@ -111,7 +93,7 @@ function processDataForCampaignOverview(
       likes: item.likes || 0,
       followers: item.followers || 0,
       leads: leadsPerDate[item.date] || 0,
-      message: messagePerDate[item.date] || 0
+      message: item.conversions || 0
     }
   }).sort((a, b) => {
     const dateA = typeof a.date === 'string' ? a.date : String(a.date);
@@ -149,7 +131,6 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 export function XiaowangTestCampaignOverview({
   xiaowangTestData,
   brokerData = [],
-  xiaowangMessageData = [],
   startDate,
   endDate
 }: XiaowangTestCampaignOverviewProps) {
@@ -173,8 +154,8 @@ export function XiaowangTestCampaignOverview({
 
   // Process data for the chart
   const chartData = useMemo(() => {
-    return processDataForCampaignOverview(xiaowangTestData, brokerData, xiaowangMessageData, startDate, endDate)
-  }, [xiaowangTestData, brokerData, xiaowangMessageData, startDate, endDate])
+    return processDataForCampaignOverview(xiaowangTestData, brokerData, startDate, endDate)
+  }, [xiaowangTestData, brokerData, startDate, endDate])
 
   // Calculate Y-axis domains for dual axis
   const { leftAxisDomain, rightAxisDomain } = useMemo(() => {
@@ -206,7 +187,7 @@ export function XiaowangTestCampaignOverview({
       <Card className="bg-white/95 backdrop-blur-xl shadow-lg border border-gray-200/50">
         <CardHeader>
           <CardTitle className="text-xl font-semibold text-gray-900 font-montserrat">
-            Daily Performance Metrics
+            Trend Overview
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -224,7 +205,7 @@ export function XiaowangTestCampaignOverview({
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="text-xl font-semibold text-gray-900 font-montserrat">
-              Daily Performance Metrics
+              Trend Overview
             </CardTitle>
             <p className="text-sm text-gray-600 mt-2">
               Tracking Cost, Views, Likes, Followers, Leads, and Message over time

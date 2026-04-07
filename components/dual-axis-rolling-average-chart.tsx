@@ -7,6 +7,15 @@ import { Button } from "@/components/ui/button"
 import { LifeCarDailyData } from "@/lib/lifecar-data-processor"
 import { formatDateWithWeekday } from "@/lib/date-utils"
 
+function parseDateField(val: any): string {
+  if (typeof val === 'string') return val.split(' ')[0]
+  if (typeof val === 'number') {
+    const d = new Date((val - 25569) * 86400 * 1000)
+    return isNaN(d.getTime()) ? '' : d.toISOString().split('T')[0]
+  }
+  return ''
+}
+
 interface LifeCarNote {
   发布时间: string
   类型: string
@@ -226,7 +235,7 @@ export function DualAxisRollingAverageChart({ data, title = "7-Day Rolling Avera
     }
 
     const matchingPosts = notesData.filter(note => {
-      const noteDate = note.发布时间.split(' ')[0] // Extract date part from "2025-09-11 12:59:29"
+      const noteDate = parseDateField(note.发布时间) // Extract date part from "2025-09-11 12:59:29"
       return noteDate === targetDate
     })
 
@@ -266,7 +275,7 @@ export function DualAxisRollingAverageChart({ data, title = "7-Day Rolling Avera
                       {post.名称}
                     </p>
                     <p className="text-purple-600 text-xs">
-                      {post.类型} • {post.发布时间.split(' ')[1]?.substring(0, 5) || ''}
+                      {post.类型} • {typeof post.发布时间 === 'string' ? (post.发布时间.split(' ')[1]?.substring(0, 5) || '') : ''}
                     </p>
                   </div>
                 ))}

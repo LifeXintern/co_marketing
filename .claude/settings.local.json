@@ -62,7 +62,8 @@
       "Bash(dir \"C:\\Users\\inter\\Desktop\\Simon-Edit-Marketing\\app\\api\\all-in-one-upload\")",
       "Bash(dir:*)",
       "Bash(xxd \"C:/Users/inter/co-marketing/co_marketing/AssistingFiles/BugAnalysis.md\")",
-      "Bash(npx vercel:*)"
+      "Bash(npx vercel:*)",
+      "Bash(ls components/lifecar-*.tsx components/weekly-leads-cost.tsx components/weekly-cost-leads.tsx components/monthly-leads-cost.tsx components/monthly-per-leads-cost.tsx components/daily-leads-chart.tsx components/acquisition-time-analysis.tsx components/weekly-analysis.tsx)"
     ],
     "deny": []
   }

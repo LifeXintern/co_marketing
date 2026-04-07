@@ -16,12 +16,12 @@ interface AccountSwitcherProps {
 }
 
 const accounts = [
-  { value: "xiaowang-test", label: "澳洲小王Broker咨询" },
-  { value: "lifecar", label: "LifeCAR澳洲Broker" },
-  { value: "xiaowang", label: "小王咨询 Old Version" },
+  { value: "combined", label: "Combined" },
+  { value: "xiaowang", label: "小王" },
+  { value: "lifecar", label: "LifeCar" },
 ]
 
-export function AccountSwitcher({ onAccountChange, defaultAccount = "xiaowang-test" }: AccountSwitcherProps) {
+export function AccountSwitcher({ onAccountChange, defaultAccount = "combined" }: AccountSwitcherProps) {
   const [selectedAccount, setSelectedAccount] = React.useState(defaultAccount)
 
   const handleAccountChange = (account: string) => {
