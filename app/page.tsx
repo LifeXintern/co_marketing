@@ -7,7 +7,6 @@ import { sessionStorageUtils, type StorageData } from "@/lib/sessionStorageUtils
 import { ChevronLeft, ChevronRight } from "lucide-react"
 const PieChartWithFilter = dynamic(() => import("@/components/pie-chart-with-filter").then(mod => mod.PieChartWithFilter), { ssr: false })
 const BrokerWeeklyDonutChart = dynamic(() => import("@/components/broker-weekly-donut-chart").then(mod => mod.BrokerWeeklyDonutChart), { ssr: false })
-const BrokerActivityHeatmap = dynamic(() => import("@/components/broker-activity-heatmap").then(mod => mod.BrokerActivityHeatmap), { ssr: false })
 const MonthlyPatternChart = dynamic(() => import("@/components/monthly-pattern-chart").then(mod => mod.MonthlyPatternChart), { ssr: false })
 
 import { Button } from "@/components/ui/button"
@@ -32,6 +31,7 @@ const XiaowangTestWeeklyAnalysisAdapted = dynamic(() => import("@/components/xia
 const XiaowangTestMonthlyCostAnalysis = dynamic(() => import("@/components/xiaowang-test-monthly-cost-analysis").then(mod => mod.XiaowangTestMonthlyCostAnalysis), { ssr: false })
 const XiaowangTestMonthlyCostPerMetric = dynamic(() => import("@/components/xiaowang-test-monthly-cost-per-metric").then(mod => mod.XiaowangTestMonthlyCostPerMetric), { ssr: false })
 const XiaowangTestCampaignOverview = dynamic(() => import("@/components/xiaowang-test-campaign-overview").then(mod => mod.XiaowangTestCampaignOverview), { ssr: false })
+const AccountPerformanceOverview = dynamic(() => import("@/components/account-performance-overview").then(mod => mod.AccountPerformanceOverview), { ssr: false })
 
 const DashboardHeader = dynamic(() => import("@/components/dashboard-header").then(mod => mod.DashboardHeader), { ssr: false })
 const DashboardTimeFilter = dynamic(() => import("@/components/dashboard-time-filter").then(mod => mod.DashboardTimeFilter), { ssr: false })
@@ -119,24 +119,29 @@ function extractDateString(item: any): string | null {
   return null;
 }
 
+// Normalize broker names: trim whitespace, title-case each word, fix known typos.
+// Returns empty string for blank entries so callers can decide how to handle them.
+function normalizeBrokerName(name: string | undefined | null): string {
+  if (!name) return ''
+  const trimmed = name.trim()
+  if (!trimmed) return ''
+  const titleCased = trimmed.replace(/\b\w+/g, word =>
+    word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+  )
+  // Fix known data-entry typos
+  if (titleCased === 'Linudo') return 'Linduo'
+  return titleCased
+}
+
 // 处理饼图数据 - 使用真实Excel数据中的 Broker 列，不受时间筛选影响
 function processBrokerData(brokerDataJson: any[]) {
   try {
     let clientsData = brokerDataJson || []
 
-    // 统计每个 Broker 的客户数量
+    // 统计每个 Broker 的客户数量 - skip records with no broker assigned
     const brokerCounts = clientsData.reduce((acc: any, client: any) => {
-      let broker = client.broker || '未知'
-
-      // Normalize broker names
-      if (broker.toLowerCase() === 'yuki') {
-        broker = 'Yuki'
-      } else if (broker === 'Linudo') {
-        broker = 'Linduo'
-      } else if (broker.toLowerCase() === 'ziv') {
-        broker = 'Ziv'
-      }
-
+      const broker = normalizeBrokerName(client.broker)
+      if (!broker) return acc
       acc[broker] = (acc[broker] || 0) + 1
       return acc
     }, {})
@@ -768,7 +773,7 @@ export default function Home() {
       { id: 'broker', name: 'Broker Distribution', icon: '📊', desc: 'Broker performance analysis' },
       { id: 'cost', name: 'Cost Analysis', icon: '💰', desc: 'Cost comparison analysis' },
       { id: 'weekly-analysis', name: 'Weekly Analysis', icon: '📈', desc: 'Weekly performance insights' },
-      { id: 'activity-heatmap', name: 'Template', icon: '🔥', desc: 'Broker activity patterns' }
+      { id: 'activity-heatmap', name: 'Month-to-Month Comparison', icon: '🔥', desc: 'Compare same month performance across years' }
     ];
   };
 
@@ -830,6 +835,29 @@ export default function Home() {
       shares: d.shares || 0,
     }))
   }, [lifeCarData])
+
+  // Always-combined daily data — used for Trend Overview regardless of selected account
+  const combinedDailyData = useMemo(() => {
+    const xiaowangDays: any[] = xiaowangTestData?.dailyData || []
+    const merged: Record<string, any> = {}
+    ;[...xiaowangDays, ...normalizedLifeCarData].forEach((d: any) => {
+      if (!d.date) return
+      if (!merged[d.date]) {
+        merged[d.date] = { ...d }
+      } else {
+        merged[d.date].cost += d.cost || 0
+        merged[d.date].impressions += d.impressions || 0
+        merged[d.date].clicks += d.clicks || 0
+        merged[d.date].likes += d.likes || 0
+        merged[d.date].followers += d.followers || 0
+        merged[d.date].conversions += d.conversions || 0
+        merged[d.date].interactions += d.interactions || 0
+        merged[d.date].saves += d.saves || 0
+        merged[d.date].shares += d.shares || 0
+      }
+    })
+    return Object.values(merged).sort((a: any, b: any) => a.date.localeCompare(b.date))
+  }, [xiaowangTestData, normalizedLifeCarData])
 
   // Active daily data — depends on selected account
   const activeDailyData = useMemo(() => {
@@ -1153,23 +1181,24 @@ export default function Home() {
               const historicalCPL = allTimeTotalLeads > 0 ? allTimeTotalSpend / allTimeTotalLeads : 0;
 
               // Week-based historical daily avg leads (computed once)
+              // Uses span-based week count (same method as donut chart) to avoid
+              // double-counting weeks at year boundaries (e.g. Dec 28–31 vs Jan 1–7).
               const historicalDailyAvgLeads = (() => {
                 if (!hasLeadsData) return 0;
-                const weekMap = new Map<string, number>();
+                let minDate: Date | null = null;
+                let maxDate: Date | null = null;
                 brokerDataJson.forEach((item: any) => {
                   const dateStr = extractLeadDate(item);
                   if (!dateStr) return;
-                  const date = new Date(dateStr);
+                  const date = new Date(dateStr + 'T00:00:00');
                   if (isNaN(date.getTime())) return;
-                  const yearStart = new Date(date.getFullYear(), 0, 1);
-                  const dayOfYear = Math.floor((date.getTime() - yearStart.getTime()) / 86400000);
-                  const weekKey = `${date.getFullYear()}-W${Math.ceil((dayOfYear + yearStart.getDay() + 1) / 7)}`;
-                  weekMap.set(weekKey, (weekMap.get(weekKey) || 0) + 1);
+                  if (!minDate || date < minDate) minDate = date;
+                  if (!maxDate || date > maxDate) maxDate = date;
                 });
-                if (weekMap.size === 0) return 0;
-                let total = 0;
-                weekMap.forEach((count: number) => { total += count / 7; });
-                return total / weekMap.size;
+                if (!minDate || !maxDate) return 0;
+                const daysDifference = Math.ceil((maxDate.getTime() - minDate.getTime()) / 86400000);
+                const totalWeeks = Math.max(1, Math.ceil(daysDifference / 7));
+                return (brokerDataJson.length / totalWeeks) / 7;
               })();
 
               const currentDailyAvgLeads = currentPeriodDays > 0 ? currentLeadsCount / currentPeriodDays : historicalDailyAvgLeads;
@@ -1433,12 +1462,23 @@ export default function Home() {
                 {/* Campaign Overview Module */}
                 <div style={{ display: activeModule === 'campaign-overview' ? 'block' : 'none' }}>
                   <div className="max-w-7xl mx-auto mb-4 space-y-6">
-                    <h2 className="text-xl font-semibold mb-3 bg-gradient-to-r from-[#751FAE] to-[#EF3C99] bg-clip-text text-transparent font-montserrat">📈 Trend Overview</h2>
-
-
                     <XiaowangTestCampaignOverview
-                      xiaowangTestData={activeTestData}
+                      dailyData={combinedDailyData}
                       brokerData={brokerDataJson}
+                      startDate={startDate}
+                      endDate={endDate}
+                    />
+
+                    <AccountPerformanceOverview
+                      title="小王 Performance Overview"
+                      dailyData={xiaowangTestData?.dailyData || []}
+                      startDate={startDate}
+                      endDate={endDate}
+                    />
+
+                    <AccountPerformanceOverview
+                      title="LifeCAR Performance Overview"
+                      dailyData={normalizedLifeCarData}
                       startDate={startDate}
                       endDate={endDate}
                     />
@@ -1601,32 +1641,22 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Template Module (activity-heatmap) */}
+                {/* Month-to-Month Comparison Module (activity-heatmap) */}
                 <div style={{ display: activeModule === 'activity-heatmap' ? 'block' : 'none' }}>
                   <div className="max-w-7xl mx-auto mb-4 space-y-6">
-                    <h2 className="text-xl font-semibold mb-3 bg-gradient-to-r from-[#751FAE] to-[#EF3C99] bg-clip-text text-transparent font-montserrat">🔥 Template - Monthly Leads Pattern & Activity Analysis</h2>
 
                     {/* Check if we have broker data for the components */}
                     {brokerDataJson.length > 0 ? (
                       <div className="space-y-6">
-                        {/* Monthly Leads Pattern Analysis */}
+                        {/* Month-to-Month Comparison */}
                         <div className="glass-card rounded-lg overflow-hidden">
                           <div className="p-4 border-b border-gray-200">
-                            <h3 className="text-lg font-semibold text-gray-800">Monthly Leads Pattern Analysis</h3>
-                            <p className="text-sm text-gray-600 mt-1">Analyze leads quantity patterns for the same months across different years - easier to identify seasonal trend</p>
+                            <h3 className="text-lg font-semibold text-gray-800">Month-to-Month Comparison</h3>
                           </div>
                           <MonthlyPatternChart
                             data={monthlyDataJson}
-                            title="Monthly Leads Pattern Analysis"
+                            title="Month-to-Month Comparison"
                           />
-                        </div>
-
-                        {/* Activity Heatmap */}
-                        <div className="glass-card rounded-lg overflow-hidden">
-                          <div className="p-4 border-b border-gray-200">
-                            <h3 className="text-lg font-semibold text-gray-800">Broker Activity Heatmap</h3>
-                          </div>
-                          <BrokerActivityHeatmap brokerData={brokerDataJson} />
                         </div>
                       </div>
                     ) : (

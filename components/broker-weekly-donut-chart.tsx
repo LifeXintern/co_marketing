@@ -35,7 +35,7 @@ function processBrokerWeeklyAverage(brokerDataJson: any[] = [], weeklyDataJson: 
         if (dateStr) {
           const leadDate = new Date(dateStr + 'T00:00:00');
           const daysSinceLead = (today.getTime() - leadDate.getTime()) / (1000 * 60 * 60 * 24);
-          return daysSinceLead > 90 ? 'Unknown' : 'Pending Assignment';
+          return daysSinceLead > 90 ? 'Unknown' : 'Pending';
         }
         return 'Unknown';
       }
@@ -103,13 +103,10 @@ function processBrokerWeeklyAverage(brokerDataJson: any[] = [], weeklyDataJson: 
       totalWeeks = Math.ceil(daysDifference / 7); // 向上取整到周数
     }
     
-    // 生成每周平均数据 - 过滤掉W、N/A、ruofan和Zoey
+    // 生成每周平均数据 - 排除 Unknown、Pending（未分配leads不计入broker表现）
+    const excludeBrokers = ['Unknown', 'Pending'];
     const weeklyAverageData = Object.entries(allBrokerCounts)
-      .filter(([broker, count]) => {
-        // 过滤掉不需要的broker - 移除 ruofan，因为已经与 Yuki 合并；Zoey已合并到小助手
-        const excludeBrokers = ['Unknown'];
-        return count > 0 && !excludeBrokers.includes(broker);
-      })
+      .filter(([broker]) => !excludeBrokers.includes(broker))
       .sort(([,a], [,b]) => b - a)
       .map(([broker, totalLeads]) => {
         const weeklyAverage = totalLeads / totalWeeks;
@@ -118,7 +115,8 @@ function processBrokerWeeklyAverage(brokerDataJson: any[] = [], weeklyDataJson: 
           value: Math.round(weeklyAverage * 10) / 10,
           totalLeads
         };
-      });
+      })
+      .filter(entry => entry.value > 0); // exclude brokers whose average rounds to 0
     
     console.log('Broker每周平均数据:', {
       totalWeeks,
@@ -152,7 +150,7 @@ const getBrokerColor = (brokerName: string, index: number = 0) => {
     'Yuki/Ruofan': '#751fae',
     'Jo': '#a2e329',
     'Amy': '#3cbde5',
-    'Pending Assignment': '#95A5A6',
+    'Pending': '#95A5A6',
     'Linduo': '#8f4abc',
     'External Broker': '#4A90D9',
   };

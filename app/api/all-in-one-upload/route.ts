@@ -4,6 +4,21 @@ import { parse } from 'csv-parse/sync'
 import { getNotesStore as getLifeCarNotesStore } from '@/app/api/lifecar-notes/notes-store'
 import { getXiaoWangTestNotesStore } from '@/app/api/xiaowang-test-notes/notes-store'
 
+// Normalize broker names: trim whitespace, title-case each word, fix known typos.
+// Returns empty string for blank entries so downstream components can apply their own logic.
+function normalizeBrokerName(name: string | undefined | null): string {
+  if (!name) return ''
+  const trimmed = name.trim()
+  if (!trimmed) return ''
+  // Title-case: capitalize first letter of each word, lowercase the rest
+  const titleCased = trimmed.replace(/\b\w+/g, word =>
+    word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+  )
+  // Fix known data-entry typos
+  if (titleCased === 'Linudo') return 'Linduo'
+  return titleCased
+}
+
 // Helper function to process Excel dates keeping them in pure UTC to avoid local timezone biases
 function formatExcelDateStr(excelDate: any): string | null {
   if (typeof excelDate === 'number') {
@@ -181,7 +196,7 @@ export async function POST(request: NextRequest) {
 
           const processedRow = {
             no: row['No.'] || row.no,
-            broker: row['Broker'] || row.broker,
+            broker: normalizeBrokerName(row['Broker'] || row.broker),
             date: dateStr,
             wechat: row['微信'] || row.wechat,
             source: row['来源'] || row.source
@@ -368,9 +383,9 @@ export async function POST(request: NextRequest) {
 
         // Filter out rows with "笔记违规" or "仅自己可见" status, and rows starting with "专业号行业"
         const filteredData = data.filter(row => {
-          const status = row['笔记状态'] || ''
-          const publishTime = row['笔记发布时间'] || ''
-          const isValid = status !== '笔记违规' && status !== '仅自己可见' && !publishTime.toString().startsWith('专业号行业')
+          const status = (row['笔记状态'] || '').trim()
+          const publishTime = (row['笔记发布时间'] || '').toString().trim()
+          const isValid = status !== '笔记违规' && status !== '仅自己可见' && !publishTime.startsWith('专业号行业')
           return isValid
         })
 
@@ -514,9 +529,9 @@ export async function POST(request: NextRequest) {
 
         // Filter out rows with "笔记违规" or "仅自己可见" status, and rows starting with "专业号行业"
         const filteredData = data.filter(row => {
-          const status = row['笔记状态'] || ''
-          const publishTime = row['笔记发布时间'] || row['发布时间'] || ''
-          const isValid = status !== '笔记违规' && status !== '仅自己可见' && !publishTime.toString().startsWith('专业号行业')
+          const status = (row['笔记状态'] || '').trim()
+          const publishTime = (row['笔记发布时间'] || row['发布时间'] || '').toString().trim()
+          const isValid = status !== '笔记违规' && status !== '仅自己可见' && !publishTime.startsWith('专业号行业')
           return isValid
         })
 

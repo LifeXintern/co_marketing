@@ -46,10 +46,6 @@ export function MonthlyPatternChart({ data, title = "Monthly Leads Pattern Analy
 
   return (
     <div className="w-full">
-      <h3 className="text-xl font-semibold text-gray-900 mb-4 text-center font-montserrat">{title}</h3>
-      <div className="text-sm text-gray-600 mb-4 text-center font-montserrat font-light">
-        Analyze leads quantity patterns for the same months across different years - easier to identify seasonal trends
-      </div>
       <div className="h-80">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart

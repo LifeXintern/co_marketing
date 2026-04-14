@@ -1,13 +1,12 @@
 "use client"
 
-import React, { useMemo, useState } from 'react'
+import React, { useMemo } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { formatDateWithWeekday } from "@/lib/date-utils"
 
 interface XiaowangTestCampaignOverviewProps {
-  xiaowangTestData?: any
+  dailyData?: any[]
   brokerData?: any[]
   startDate?: string
   endDate?: string
@@ -17,111 +16,72 @@ interface DailyMetrics {
   date: string
   displayDate: string
   cost: number
-  views: number
-  likes: number
-  followers: number
   leads: number
-  message: number
 }
 
-function processDataForCampaignOverview(
-  xiaowangTestData: any,
+function processData(
+  dailyData: any[],
   brokerData: any[],
   startDate?: string,
   endDate?: string
 ): DailyMetrics[] {
-  if (!xiaowangTestData?.dailyData || !Array.isArray(xiaowangTestData.dailyData)) {
-    return []
-  }
+  if (!dailyData || !Array.isArray(dailyData)) return []
 
-  // Create a map of leads by date from broker data
+  // Build leads-per-date from broker data (account-independent)
   const leadsPerDate: Record<string, number> = {}
-
   if (brokerData && Array.isArray(brokerData)) {
     brokerData.forEach(item => {
       if (!item || typeof item !== 'object') return
-
       let dateValue: string | null = null
-
-      // Try different date field names
       const dateFields = ['Date', 'date', '时间', 'Date ', 'date ']
       for (const field of dateFields) {
         if (item[field] !== undefined && item[field] !== null && item[field] !== '') {
           if (typeof item[field] === 'number') {
-            // Excel serial number conversion
-            const excelDate = new Date((item[field] - 25569) * 86400 * 1000)
-            if (!isNaN(excelDate.getTime())) {
-              dateValue = excelDate.toISOString().split('T')[0]
-              break
-            }
+            const d = new Date((item[field] - 25569) * 86400 * 1000)
+            if (!isNaN(d.getTime())) { dateValue = d.toISOString().split('T')[0]; break }
           } else if (typeof item[field] === 'string') {
-            // Try to parse string date
-            const parsedDate = new Date(item[field])
-            if (!isNaN(parsedDate.getTime())) {
-              dateValue = parsedDate.toISOString().split('T')[0]
-              break
-            }
+            const d = new Date(item[field])
+            if (!isNaN(d.getTime())) { dateValue = d.toISOString().split('T')[0]; break }
           }
         }
       }
+      if (dateValue) leadsPerDate[dateValue] = (leadsPerDate[dateValue] || 0) + 1
+    })
+  }
 
-      if (dateValue) {
-        leadsPerDate[dateValue] = (leadsPerDate[dateValue] || 0) + 1
+  // Collect all dates: union of ad dates + lead dates, filtered by range
+  const allDates = new Set<string>([
+    ...dailyData.map((d: any) => d.date).filter(Boolean),
+    ...Object.keys(leadsPerDate),
+  ])
+
+  return Array.from(allDates)
+    .filter(date => {
+      if (startDate && endDate) return date >= startDate && date <= endDate
+      return true
+    })
+    .map(date => {
+      const adItem = dailyData.find((d: any) => d.date === date)
+      return {
+        date,
+        displayDate: formatDateWithWeekday(date),
+        cost: adItem?.cost || 0,
+        leads: leadsPerDate[date] || 0,
       }
     })
-  }
-
-  // Filter and process daily data
-  let filteredData = xiaowangTestData.dailyData
-
-  if (startDate && endDate) {
-    filteredData = xiaowangTestData.dailyData.filter((item: any) => {
-      const itemDate = item.date
-      return itemDate >= startDate && itemDate <= endDate
-    })
-  }
-
-  return filteredData.map((item: any) => {
-    // Use centralized date formatter with weekday (e.g., "Nov 27 (Wed)")
-    const displayDate = formatDateWithWeekday(item.date)
-
-    return {
-      date: item.date,
-      displayDate,
-      cost: item.cost || 0,
-      views: (item.clicks || 0) / 50,  // Divide views by 50 for better scale
-      likes: item.likes || 0,
-      followers: item.followers || 0,
-      leads: leadsPerDate[item.date] || 0,
-      message: item.conversions || 0
-    }
-  }).sort((a, b) => {
-    const dateA = typeof a.date === 'string' ? a.date : String(a.date);
-    const dateB = typeof b.date === 'string' ? b.date : String(b.date);
-    return dateA.localeCompare(dateB);
-  })
+    .sort((a, b) => a.date.localeCompare(b.date))
 }
 
-// Custom tooltip
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-white/95 backdrop-blur-sm border border-gray-200 rounded-lg shadow-lg p-3">
         <p className="font-semibold text-gray-900 mb-2">{label}</p>
-        {payload.map((entry: any, index: number) => {
-          // Show actual values for views (multiply back by 50)
-          const displayValue = entry.dataKey === 'views'
-            ? (entry.value * 50).toLocaleString()
-            : entry.value.toLocaleString()
-
-          const displayName = entry.dataKey === 'views' ? 'Views' : entry.name
-
-          return (
-            <p key={index} style={{ color: entry.color }} className="text-sm">
-              {`${displayName}: ${displayValue}`}
-            </p>
-          )
-        })}
+        {payload.map((entry: any, index: number) => (
+          <p key={index} style={{ color: entry.color }} className="text-sm">
+            {`${entry.name}: ${entry.value.toLocaleString()}`}
+          </p>
+        ))}
       </div>
     )
   }
@@ -129,71 +89,31 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 }
 
 export function XiaowangTestCampaignOverview({
-  xiaowangTestData,
+  dailyData = [],
   brokerData = [],
   startDate,
   endDate
 }: XiaowangTestCampaignOverviewProps) {
-  // State for line visibility - default: only cost, leads, message visible
-  const [visibleLines, setVisibleLines] = useState({
-    cost: true,
-    views: false,
-    likes: false,
-    followers: false,
-    leads: true,
-    message: true
-  })
+  const chartData = useMemo(() => processData(dailyData, brokerData, startDate, endDate), [dailyData, brokerData, startDate, endDate])
 
-  // Toggle line visibility
-  const toggleLine = (lineKey: keyof typeof visibleLines) => {
-    setVisibleLines(prev => ({
-      ...prev,
-      [lineKey]: !prev[lineKey]
-    }))
-  }
-
-  // Process data for the chart
-  const chartData = useMemo(() => {
-    return processDataForCampaignOverview(xiaowangTestData, brokerData, startDate, endDate)
-  }, [xiaowangTestData, brokerData, startDate, endDate])
-
-  // Calculate Y-axis domains for dual axis
   const { leftAxisDomain, rightAxisDomain } = useMemo(() => {
-    if (!chartData || chartData.length === 0) {
-      return {
-        leftAxisDomain: [0, 100],
-        rightAxisDomain: [0, 100]
-      }
-    }
-
-    // Left axis: Cost
-    const costValues = chartData.map(d => d.cost).filter(v => v > 0)
-    const maxCost = costValues.length > 0 ? Math.max(...costValues) : 1
-    const leftMax = Math.ceil(maxCost * 1.1)
-
-    // Right axis: Views, Likes, Followers, Leads, Message
-    const rightValues = chartData.flatMap(d => [d.views, d.likes, d.followers, d.leads, d.message])
-    const maxRight = Math.max(...rightValues, 1)
-    const rightMax = Math.ceil(maxRight * 1.1)
-
+    if (!chartData.length) return { leftAxisDomain: [0, 100], rightAxisDomain: [0, 10] }
+    const maxCost = Math.max(...chartData.map(d => d.cost), 1)
+    const maxLeads = Math.max(...chartData.map(d => d.leads), 1)
     return {
-      leftAxisDomain: [0, leftMax],
-      rightAxisDomain: [0, rightMax]
+      leftAxisDomain: [0, Math.ceil(maxCost * 1.1)],
+      rightAxisDomain: [0, Math.ceil(maxLeads * 1.1)],
     }
   }, [chartData])
 
-  if (!chartData || chartData.length === 0) {
+  if (!chartData.length) {
     return (
       <Card className="bg-white/95 backdrop-blur-xl shadow-lg border border-gray-200/50">
         <CardHeader>
-          <CardTitle className="text-xl font-semibold text-gray-900 font-montserrat">
-            Trend Overview
-          </CardTitle>
+          <CardTitle className="text-xl font-semibold text-gray-900 font-montserrat">Trend Overview</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-96 flex items-center justify-center text-gray-500">
-            No data available for the selected period
-          </div>
+          <div className="h-96 flex items-center justify-center text-gray-500">No data available for the selected period</div>
         </CardContent>
       </Card>
     )
@@ -202,102 +122,14 @@ export function XiaowangTestCampaignOverview({
   return (
     <Card className="bg-white/95 backdrop-blur-xl shadow-lg border border-gray-200/50">
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="text-xl font-semibold text-gray-900 font-montserrat">
-              Trend Overview
-            </CardTitle>
-            <p className="text-sm text-gray-600 mt-2">
-              Tracking Cost, Views, Likes, Followers, Leads, and Message over time
-            </p>
-          </div>
-
-          {/* Line Toggle Buttons */}
-          <div className="flex flex-wrap gap-2">
-            {/* Default visible group */}
-            <Button
-              variant={visibleLines.cost ? "default" : "outline"}
-              size="sm"
-              onClick={() => toggleLine('cost')}
-              className={`text-xs ${
-                visibleLines.cost
-                  ? 'bg-[#751FAE] hover:bg-[#6919A6] text-white border-0'
-                  : 'border-[#751FAE] text-[#751FAE] hover:bg-[#751FAE] hover:text-white bg-white'
-              }`}
-            >
-              Cost
-            </Button>
-            <Button
-              variant={visibleLines.leads ? "default" : "outline"}
-              size="sm"
-              onClick={() => toggleLine('leads')}
-              className={`text-xs ${
-                visibleLines.leads
-                  ? 'bg-[#F59E0B] hover:bg-[#D97706] text-white border-0'
-                  : 'border-[#F59E0B] text-[#F59E0B] hover:bg-[#F59E0B] hover:text-white bg-white'
-              }`}
-            >
-              Leads
-            </Button>
-            <Button
-              variant={visibleLines.message ? "default" : "outline"}
-              size="sm"
-              onClick={() => toggleLine('message')}
-              className={`text-xs ${
-                visibleLines.message
-                  ? 'bg-[#EF4444] hover:bg-[#DC2626] text-white border-0'
-                  : 'border-[#EF4444] text-[#EF4444] hover:bg-[#EF4444] hover:text-white bg-white'
-              }`}
-            >
-              Message
-            </Button>
-            {/* Default hidden group */}
-            <Button
-              variant={visibleLines.views ? "default" : "outline"}
-              size="sm"
-              onClick={() => toggleLine('views')}
-              className={`text-xs ${
-                visibleLines.views
-                  ? 'bg-[#3CBDE5] hover:bg-[#2563EB] text-white border-0'
-                  : 'border-[#3CBDE5] text-[#3CBDE5] hover:bg-[#3CBDE5] hover:text-white bg-white'
-              }`}
-            >
-              Views
-            </Button>
-            <Button
-              variant={visibleLines.likes ? "default" : "outline"}
-              size="sm"
-              onClick={() => toggleLine('likes')}
-              className={`text-xs ${
-                visibleLines.likes
-                  ? 'bg-[#EF3C99] hover:bg-[#E91E63] text-white border-0'
-                  : 'border-[#EF3C99] text-[#EF3C99] hover:bg-[#EF3C99] hover:text-white bg-white'
-              }`}
-            >
-              Likes
-            </Button>
-            <Button
-              variant={visibleLines.followers ? "default" : "outline"}
-              size="sm"
-              onClick={() => toggleLine('followers')}
-              className={`text-xs ${
-                visibleLines.followers
-                  ? 'bg-[#10B981] hover:bg-[#059669] text-white border-0'
-                  : 'border-[#10B981] text-[#10B981] hover:bg-[#10B981] hover:text-white bg-white'
-              }`}
-            >
-              Followers
-            </Button>
-          </div>
-        </div>
+        <CardTitle className="text-xl font-semibold text-gray-900 font-montserrat">Trend Overview</CardTitle>
+        <p className="text-sm text-gray-600 mt-1">Combined Total Cost and Total Leads across both accounts</p>
       </CardHeader>
       <CardContent>
         <div className="h-96">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart
-              data={chartData}
-              margin={{ top: 5, right: 30, left: 20, bottom: 60 }}
-            >
+            <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 60 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis
                 dataKey="displayDate"
                 angle={-45}
@@ -306,120 +138,23 @@ export function XiaowangTestCampaignOverview({
                 tick={{ fontSize: 11 }}
                 interval={Math.floor(chartData.length / 20)}
               />
-              {/* Left Y-axis for Cost */}
               <YAxis
                 yAxisId="left"
                 domain={leftAxisDomain}
                 tick={{ fontSize: 11 }}
-                label={{
-                  value: 'Cost ($)',
-                  angle: -90,
-                  position: 'insideLeft',
-                  style: { fontSize: 12 }
-                }}
+                label={{ value: 'Cost ($)', angle: -90, position: 'insideLeft', style: { fontSize: 12 } }}
               />
-              {/* Right Y-axis for Views, Likes, Followers, Leads */}
               <YAxis
                 yAxisId="right"
                 orientation="right"
                 domain={rightAxisDomain}
                 tick={{ fontSize: 11 }}
-                label={{
-                  value: 'Metrics Count',
-                  angle: 90,
-                  position: 'insideRight',
-                  style: { fontSize: 12 }
-                }}
+                label={{ value: 'Leads', angle: 90, position: 'insideRight', style: { fontSize: 12 } }}
               />
               <Tooltip content={<CustomTooltip />} />
-              <Legend
-                wrapperStyle={{ paddingTop: '20px' }}
-                iconType="line"
-              />
-
-              {/* Cost Line - Left Y-axis */}
-              {visibleLines.cost && (
-                <Line
-                  yAxisId="left"
-                  type="monotone"
-                  dataKey="cost"
-                  name="Cost ($)"
-                  stroke="#751FAE"
-                  strokeWidth={2.5}
-                  dot={false}
-                  activeDot={{ r: 6 }}
-                />
-              )}
-
-              {/* Views Line - Right Y-axis */}
-              {visibleLines.views && (
-                <Line
-                  yAxisId="right"
-                  type="monotone"
-                  dataKey="views"
-                  name="Views (÷50)"
-                  stroke="#3CBDE5"
-                  strokeWidth={2.5}
-                  dot={false}
-                  activeDot={{ r: 6 }}
-                />
-              )}
-
-              {/* Likes Line - Right Y-axis */}
-              {visibleLines.likes && (
-                <Line
-                  yAxisId="right"
-                  type="monotone"
-                  dataKey="likes"
-                  name="Likes"
-                  stroke="#EF3C99"
-                  strokeWidth={2.5}
-                  dot={false}
-                  activeDot={{ r: 6 }}
-                />
-              )}
-
-              {/* Followers Line - Right Y-axis */}
-              {visibleLines.followers && (
-                <Line
-                  yAxisId="right"
-                  type="monotone"
-                  dataKey="followers"
-                  name="Followers"
-                  stroke="#10B981"
-                  strokeWidth={2.5}
-                  dot={false}
-                  activeDot={{ r: 6 }}
-                />
-              )}
-
-              {/* Leads Line - Right Y-axis */}
-              {visibleLines.leads && (
-                <Line
-                  yAxisId="right"
-                  type="monotone"
-                  dataKey="leads"
-                  name="Leads"
-                  stroke="#F59E0B"
-                  strokeWidth={2.5}
-                  dot={false}
-                  activeDot={{ r: 6 }}
-                />
-              )}
-
-              {/* Message Line - Right Y-axis */}
-              {visibleLines.message && (
-                <Line
-                  yAxisId="right"
-                  type="monotone"
-                  dataKey="message"
-                  name="Message"
-                  stroke="#EF4444"
-                  strokeWidth={2.5}
-                  dot={false}
-                  activeDot={{ r: 6 }}
-                />
-              )}
+              <Legend wrapperStyle={{ paddingTop: '20px' }} iconType="line" />
+              <Line yAxisId="left" type="monotone" dataKey="cost" name="Total Cost" stroke="#751FAE" strokeWidth={2.5} dot={false} activeDot={{ r: 6 }} />
+              <Line yAxisId="right" type="monotone" dataKey="leads" name="Total Leads" stroke="#F59E0B" strokeWidth={2.5} dot={false} activeDot={{ r: 6 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>

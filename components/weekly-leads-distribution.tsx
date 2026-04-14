@@ -22,7 +22,7 @@ const getBrokerColor = (brokerName: string, index: number) => {
     'Yuki/Ruofan': '#751fae',
     'Jo': '#a2e329',
     'Amy': '#3cbde5',
-    'Pending Assignment': '#95A5A6',
+    'Pending': '#95A5A6',
     'Linduo': '#8f4abc',
     'External Broker': '#4A90D9',
   };

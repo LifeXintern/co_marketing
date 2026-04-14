@@ -41,7 +41,7 @@ function processBrokerData(brokerDataJson: any[], startDate?: string, endDate?: 
         if (dateStr) {
           const leadDate = new Date(dateStr + 'T00:00:00')
           const daysSinceLead = (today.getTime() - leadDate.getTime()) / (1000 * 60 * 60 * 24)
-          broker = daysSinceLead > 90 ? 'Unknown' : 'Pending Assignment'
+          broker = daysSinceLead > 90 ? 'Unknown' : 'Pending'
         } else {
           broker = 'Unknown'
         }
@@ -143,7 +143,7 @@ export function PieChartWithFilter({ startDate = '', endDate = '', brokerData = 
                   'Yuki/Ruofan': '#751fae',
                   'Jo': '#a2e329',
                   'Amy': '#3cbde5',
-                  'Pending Assignment': '#95A5A6',
+                  'Pending': '#95A5A6',
                   'Linduo': '#8f4abc',
                   'External Broker': '#4A90D9',
                 };
@@ -179,6 +179,11 @@ export function PieChartWithFilter({ startDate = '', endDate = '', brokerData = 
           )}
         </div>
 
+        {processedBrokerData.some(b => b.broker === 'Pending') && (
+          <p className="text-xs text-gray-600 italic mt-2">
+            * Pending: Leads still waiting to be assigned.
+          </p>
+        )}
       </div>
     </div>
   );

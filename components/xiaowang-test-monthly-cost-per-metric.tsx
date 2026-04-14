@@ -30,34 +30,30 @@ function processXiaowangTestMonthlyCostData(xiaowangTestData: any, brokerData: a
     return []
   }
 
-  // Create a map of leads by date from broker data
-  const leadsPerDate: Record<string, number> = {}
+  // Aggregate leads by month directly from broker data — independent of which ad dates
+  // exist in dailyData so that switching accounts never changes the leads count.
+  const leadsPerMonth: Record<string, number> = {}
 
   if (brokerData && Array.isArray(brokerData)) {
     brokerData.forEach(item => {
       if (!item || typeof item !== 'object') return
 
       let dateValue: string | null = null
-      let dateField = ''
 
       // Try different date field names
       const dateFields = ['Date', 'date', '时间', 'Date ', 'date ']
       for (const field of dateFields) {
         if (item[field] !== undefined && item[field] !== null && item[field] !== '') {
           if (typeof item[field] === 'number') {
-            // Excel serial number conversion
             const excelDate = new Date((item[field] - 25569) * 86400 * 1000)
             if (!isNaN(excelDate.getTime())) {
               dateValue = excelDate.toISOString().split('T')[0]
-              dateField = field
               break
             }
           } else if (typeof item[field] === 'string') {
-            // Try to parse string date
             const parsedDate = new Date(item[field])
             if (!isNaN(parsedDate.getTime())) {
               dateValue = parsedDate.toISOString().split('T')[0]
-              dateField = field
               break
             }
           }
@@ -65,7 +61,11 @@ function processXiaowangTestMonthlyCostData(xiaowangTestData: any, brokerData: a
       }
 
       if (dateValue) {
-        leadsPerDate[dateValue] = (leadsPerDate[dateValue] || 0) + 1
+        const d = new Date(dateValue)
+        if (!isNaN(d.getTime())) {
+          const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+          leadsPerMonth[monthKey] = (leadsPerMonth[monthKey] || 0) + 1
+        }
       }
     })
   }
@@ -99,12 +99,16 @@ function processXiaowangTestMonthlyCostData(xiaowangTestData: any, brokerData: a
       }
     }
 
-    // Aggregate data
+    // Aggregate ad metrics only — leads are assigned after from leadsPerMonth
     monthlyMap[monthKey].views += dailyItem.clicks || 0
     monthlyMap[monthKey].likes += dailyItem.likes || 0
     monthlyMap[monthKey].followers += dailyItem.followers || 0
     monthlyMap[monthKey].cost += dailyItem.cost || 0
-    monthlyMap[monthKey].leads += leadsPerDate[dateKey] || 0
+  })
+
+  // Assign total leads per month from broker data (account-independent)
+  Object.keys(monthlyMap).forEach(monthKey => {
+    monthlyMap[monthKey].leads = leadsPerMonth[monthKey] || 0
   })
 
   // Convert to array and calculate cost per metrics
