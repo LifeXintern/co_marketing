@@ -13,18 +13,14 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
-import { Eye, EyeOff } from "lucide-react"
 
 import { parseLifeCarData, aggregateByMonth, filterByDateRange, type LifeCarDailyData, type LifeCarMonthlyData } from "@/lib/lifecar-data-processor"
 const LifeCarNotesModal = dynamic(() => import("@/components/lifecar-notes-modal").then(mod => mod.LifeCarNotesModal), { ssr: false })
 const XiaoWangTestNotesModal = dynamic(() => import("@/components/xiaowang-test-notes-modal").then(mod => mod.XiaoWangTestNotesModal), { ssr: false })
 
 const AllInOneUpload = dynamic(() => import("@/components/all-in-one-upload").then(mod => mod.AllInOneUpload), { ssr: false })
-const XiaowangTestCostAnalysis = dynamic(() => import("@/components/xiaowang-test-cost-analysis").then(mod => mod.XiaowangTestCostAnalysis), { ssr: false })
-const XiaowangTestCostPerMetric = dynamic(() => import("@/components/xiaowang-test-cost-per-metric").then(mod => mod.XiaowangTestCostPerMetric), { ssr: false })
-
-const XiaowangTestWeeklyCostAnalysis = dynamic(() => import("@/components/xiaowang-test-weekly-cost-analysis").then(mod => mod.XiaowangTestWeeklyCostAnalysis), { ssr: false })
 const XiaowangTestWeeklyCostPerMetric = dynamic(() => import("@/components/xiaowang-test-weekly-cost-per-metric").then(mod => mod.XiaowangTestWeeklyCostPerMetric), { ssr: false })
+const WeeklyCostTrendOverview = dynamic(() => import("@/components/weekly-cost-trend-overview").then(mod => mod.WeeklyCostTrendOverview), { ssr: false })
 
 const XiaowangTestWeeklyOverallAverage = dynamic(() => import("@/components/xiaowang-test-weekly-analysis-adapted").then(mod => mod.XiaowangTestWeeklyOverallAverage), { ssr: false })
 const XiaowangTestWeeklyAnalysisAdapted = dynamic(() => import("@/components/xiaowang-test-weekly-analysis-adapted").then(mod => mod.XiaowangTestWeeklyAnalysisAdapted), { ssr: false })
@@ -223,56 +219,27 @@ export default function Home() {
   const [showAllInOneUpload, setShowAllInOneUpload] = useState(false);
   const [dataRefreshKey, setDataRefreshKey] = useState(0);
 
-  const [hiddenModules, setHiddenModules] = useState<{ [account: string]: string[] }>({
-    'combined': ['activity-heatmap'],
-    'xiaowang': ['activity-heatmap'],
-    'lifecar': ['activity-heatmap'],
-  });
-
   // 账号筛选状态
   const [selectedAccount, setSelectedAccount] = useState('combined');
 
   // 小王测试组件间共享的指标选择状态
   const [xiaowangSelectedMetric, setXiaowangSelectedMetric] = useState<'views' | 'likes' | 'followers' | 'leads'>('leads');
 
-  // 小王测试Weekly Performance时间段筛选状态
-  const [weeklyTimePeriod, setWeeklyTimePeriod] = useState<number>(12); // Default 12 weeks
-
-  // 计算Weekly Performance的时间范围
-  const getWeeklyTimePeriodRange = () => {
-    const endDate = new Date();
-    const startDate = new Date();
-
-    // Calculate start date based on number of weeks
-    startDate.setDate(endDate.getDate() - (weeklyTimePeriod * 7));
-
-    return {
-      startDate: startDate.toISOString().split('T')[0],
-      endDate: endDate.toISOString().split('T')[0]
-    };
-  };
+  const [weeklyTimePeriod, setWeeklyTimePeriod] = useState<number>(12);
 
   // 日期范围状态（替代之前的dateRange）
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [error, setError] = useState('');
 
-  // 小王测试图表同步状态 - Day of Week Analysis的两个图表按钮同步
-  const [xiaowangChartFiltered, setXiaowangChartFiltered] = useState(true);
-
-
   // 账号切换处理函数
   const handleAccountChange = (account: string) => {
     setSelectedAccount(account);
-    setXiaowangChartFiltered(true);
   };
 
   // 模块切换处理函数
   const handleModuleChange = (moduleId: string) => {
     setActiveModule(moduleId);
-    if (moduleId === 'cost') {
-      setXiaowangChartFiltered(true);
-    }
   };
 
   // 时间筛选器处理函数
@@ -536,7 +503,6 @@ export default function Home() {
   // State for all note stats
   const [notesWeekdayCount, setNotesWeekdayCount] = useState<Record<string, number>>({});
   const [notesMonthlyCount, setNotesMonthlyCount] = useState<Record<string, number>>({});
-  const [xiaowangNotesWeekdayCount, setXiaowangNotesWeekdayCount] = useState<Record<string, number>>({});
   const [xiaowangNotesWeeklyCount, setXiaowangNotesWeeklyCount] = useState<Record<string, number>>({});
   const [xiaowangNotesMonthlyCount, setXiaowangNotesMonthlyCount] = useState<Record<string, number>>({});
 
@@ -554,11 +520,9 @@ export default function Home() {
   // Effect for XiaoWang Test Notes
   useEffect(() => {
     if (xiaowangTestNotesData.length > 0 && xiaowangTestData?.rawData?.length > 0) {
-      setXiaowangNotesWeekdayCount(calculateNoteStats(xiaowangTestNotesData, xiaowangTestData.rawData, 'weekday'));
       setXiaowangNotesWeeklyCount(calculateNoteStats(xiaowangTestNotesData, xiaowangTestData.rawData, 'weekly'));
       setXiaowangNotesMonthlyCount(calculateNoteStats(xiaowangTestNotesData, xiaowangTestData.rawData, 'monthly'));
     } else {
-      setXiaowangNotesWeekdayCount({});
       setXiaowangNotesWeeklyCount({});
       setXiaowangNotesMonthlyCount({});
     }
@@ -646,11 +610,22 @@ export default function Home() {
         throw new Error(`Failed to load LifeCAR data: ${response.statusText}`);
       }
       const csvText = await response.text();
-      const parsedData = parseLifeCarData(csvText);
-      const monthlyData = aggregateByMonth(parsedData);
+      const parsedData = parseLifeCarData(csvText).map((d: any) => ({
+        date: d.date,
+        cost: d.spend || 0,
+        impressions: d.impressions || 0,
+        clicks: d.clicks || 0,
+        likes: d.likes || 0,
+        followers: d.followers || 0,
+        conversions: d.multiConversion1 || 0,
+        interactions: d.interactions || 0,
+        saves: d.saves || 0,
+        comments: 0,
+        shares: d.shares || 0,
+      }));
 
       setLifeCarData(parsedData);
-      setLifeCarMonthlyData(monthlyData);
+      setLifeCarMonthlyData([]);
     } catch (error) {
       console.error('Failed to load LifeCAR data:', error);
       setLifeCarData([]);
@@ -773,42 +748,11 @@ export default function Home() {
       { id: 'broker', name: 'Broker Distribution', icon: '📊', desc: 'Broker performance analysis' },
       { id: 'cost', name: 'Cost Analysis', icon: '💰', desc: 'Cost comparison analysis' },
       { id: 'weekly-analysis', name: 'Weekly Analysis', icon: '📈', desc: 'Weekly performance insights' },
-      { id: 'activity-heatmap', name: 'Month-to-Month Comparison', icon: '🔥', desc: 'Compare same month performance across years' }
+      { id: 'activity-heatmap', name: 'Testing Graphs', icon: '🔥', desc: 'Compare same month performance across years' }
     ];
   };
 
   const allModules = getModulesForAccount(selectedAccount);
-  const accountHiddenModules = hiddenModules[selectedAccount] || [];
-  const modules = allModules.filter((module: any) => !accountHiddenModules.includes(module.id));
-
-  // 切换模块隐藏状态
-  const toggleModuleVisibility = (moduleId: string) => {
-    const currentAccountHidden = hiddenModules[selectedAccount] || [];
-
-    setHiddenModules((prev: any) => ({
-      ...prev,
-      [selectedAccount]: currentAccountHidden.includes(moduleId)
-        ? currentAccountHidden.filter((id: string) => id !== moduleId)
-        : [...currentAccountHidden, moduleId]
-    }));
-
-    // 如果隐藏的是当前激活模块，切换到第一个可见模块
-    if (moduleId === activeModule && !currentAccountHidden.includes(moduleId)) {
-      const newHiddenModules = [...currentAccountHidden, moduleId];
-      const remainingModules = allModules.filter((m: any) => !newHiddenModules.includes(m.id));
-      if (remainingModules.length > 0) {
-        setActiveModule(remainingModules[0].id);
-      }
-    }
-
-    // 如果取消隐藏，且当前没有激活模块（或激活模块被隐藏），切换到这个模块
-    if (currentAccountHidden.includes(moduleId)) {
-      const visibleModules = allModules.filter((m: any) => !currentAccountHidden.includes(m.id) || m.id === moduleId);
-      if (visibleModules.length === 1 || !visibleModules.find((m: any) => m.id === activeModule)) {
-        setActiveModule(moduleId);
-      }
-    }
-  };
 
   // 获取数据（受全局时间筛选器影响）
   const processedBrokerData = useMemo(() => {
@@ -819,28 +763,32 @@ export default function Home() {
   }, [brokerDataJson, isLoading]);
 
 
-  // Normalize LifeCar data to the same shape as xiaowangTestData.dailyData
-  const normalizedLifeCarData = useMemo(() => {
-    return (lifeCarData || []).map((d: any) => ({
-      date: d.date,
-      cost: d.spend || 0,
-      impressions: d.impressions || 0,
-      clicks: d.clicks || 0,
-      likes: d.likes || 0,
-      followers: d.followers || 0,
-      conversions: d.multiConversion1 || 0,
-      interactions: d.interactions || 0,
-      saves: d.saves || 0,
-      comments: 0,
-      shares: d.shares || 0,
-    }))
+  // Normalize lifeCarData to the standard shape — handles both old shape (spend/multiConversion1)
+  // and new shape (cost/conversions) so sessionStorage data from before the format change still works.
+  const lifeCarDailyData = useMemo(() => {
+    return (lifeCarData || []).map((d: any) => {
+      if ('cost' in d) return d
+      return {
+        date: d.date,
+        cost: d.spend || 0,
+        impressions: d.impressions || 0,
+        clicks: d.clicks || 0,
+        likes: d.likes || 0,
+        followers: d.followers || 0,
+        conversions: d.multiConversion1 || 0,
+        interactions: d.interactions || 0,
+        saves: d.saves || 0,
+        comments: d.comments || 0,
+        shares: d.shares || 0,
+      }
+    })
   }, [lifeCarData])
 
   // Always-combined daily data — used for Trend Overview regardless of selected account
   const combinedDailyData = useMemo(() => {
     const xiaowangDays: any[] = xiaowangTestData?.dailyData || []
     const merged: Record<string, any> = {}
-    ;[...xiaowangDays, ...normalizedLifeCarData].forEach((d: any) => {
+    ;[...xiaowangDays, ...lifeCarDailyData].forEach((d: any) => {
       if (!d.date) return
       if (!merged[d.date]) {
         merged[d.date] = { ...d }
@@ -857,18 +805,18 @@ export default function Home() {
       }
     })
     return Object.values(merged).sort((a: any, b: any) => a.date.localeCompare(b.date))
-  }, [xiaowangTestData, normalizedLifeCarData])
+  }, [xiaowangTestData, lifeCarDailyData])
 
   // Active daily data — depends on selected account
   const activeDailyData = useMemo(() => {
     const xiaowangDays: any[] = xiaowangTestData?.dailyData || []
 
     if (selectedAccount === 'xiaowang') return xiaowangDays
-    if (selectedAccount === 'lifecar') return normalizedLifeCarData
+    if (selectedAccount === 'lifecar') return lifeCarDailyData
 
     // combined: merge both datasets by date
     const merged: Record<string, any> = {}
-    ;[...xiaowangDays, ...normalizedLifeCarData].forEach((d: any) => {
+    ;[...xiaowangDays, ...lifeCarDailyData].forEach((d: any) => {
       if (!d.date) return
       if (!merged[d.date]) {
         merged[d.date] = { ...d }
@@ -885,7 +833,7 @@ export default function Home() {
       }
     })
     return Object.values(merged).sort((a: any, b: any) => a.date.localeCompare(b.date))
-  }, [selectedAccount, xiaowangTestData, normalizedLifeCarData])
+  }, [selectedAccount, xiaowangTestData, lifeCarDailyData])
 
   // Wrap activeDailyData in the XiaowangTestData shape that existing components expect
   const activeTestData = useMemo(() => {
@@ -981,13 +929,11 @@ export default function Home() {
   }, [activeTestData, startDate, endDate]);
 
   // Calculate global Daily Leads Average (for Weekday Leads Distribution yellow dashed line)
-  // Reuses calculation logic from XiaowangTestCostAnalysis
   const globalDailyLeadsAvg = useMemo(() => {
     if (!activeTestData?.rawData || !brokerDataJson || brokerDataJson.length === 0) return 0;
 
     const rawData = activeTestData.rawData;
 
-    // Calculate leads per date from brokerData (same logic as XiaowangTestCostAnalysis)
     const leadsPerDate: Record<string, number> = {};
     const uniqueClientsByDate: Record<string, Set<any>> = {};
 
@@ -1069,14 +1015,49 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-purple-100 to-pink-100">
-      {/* 导航栏 */}
+      {/* 导航栏 - 始终吸附在顶部，包含标题、账户切换、全屏按钮，以及时间筛选器 */}
       <nav className="bg-white/80 backdrop-blur-xl border-b border-purple-200/30 sticky top-0 z-[100] shadow-lg shadow-purple-500/10">
 
         <DashboardHeader
           selectedAccount={selectedAccount}
           handleAccountChange={handleAccountChange}
-          setShowAllInOneUpload={setShowAllInOneUpload}
         />
+
+        {/* 时间筛选器 - 作为导航栏的一部分，随导航栏吸附。Upload 按钮置于左侧（LifeX 标志下方） */}
+        {activeDailyData.length > 0 && filteredXiaowangTestData && (
+          <div className="relative">
+            <div className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 z-10">
+              <button
+                type="button"
+                onClick={() => {
+                  console.log('All in One button clicked');
+                  setShowAllInOneUpload(true);
+                }}
+                className="flex items-center gap-1.5 h-9 px-3 text-sm text-white bg-gradient-to-r from-[#751FAE] to-[#EF3C99] hover:from-[#6919A6] hover:to-[#E73691] transition-all duration-200 rounded-md shadow-md"
+                title="Upload Dataset"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                <span className="font-medium">Upload Dataset</span>
+              </button>
+            </div>
+            <DashboardTimeFilter
+              startDate={startDate}
+              setStartDate={setStartDate}
+              endDate={endDate}
+              setEndDate={setEndDate}
+              handleLastWeek={handleLastWeek}
+              isLastWeekSelected={isLastWeekSelected}
+              handleClearFilter={handleClearFilter}
+              handlePreviousPeriod={handlePreviousPeriod}
+              handleNextPeriod={handleNextPeriod}
+              error={error}
+              selectedAccount={selectedAccount}
+              isSticky={true}
+            />
+          </div>
+        )}
 
       </nav>
 
@@ -1108,23 +1089,6 @@ export default function Home() {
         {/* 统一数据面板 */}
         {activeDailyData.length > 0 && (
           <>
-            {/* 时间筛选器 - 独立卡片设计 */}
-            {filteredXiaowangTestData && (
-              <DashboardTimeFilter
-                startDate={startDate}
-                setStartDate={setStartDate}
-                endDate={endDate}
-                setEndDate={setEndDate}
-                handleLastWeek={handleLastWeek}
-                isLastWeekSelected={isLastWeekSelected}
-                handleClearFilter={handleClearFilter}
-                handlePreviousPeriod={handlePreviousPeriod}
-                handleNextPeriod={handleNextPeriod}
-                error={error}
-                selectedAccount={selectedAccount}
-                isSticky={false}
-              />
-            )}
 
 
             {/* ================= Overview – One Row / Five Cards ================= */}
@@ -1396,34 +1360,18 @@ export default function Home() {
                 <div className="bg-white/95 backdrop-blur-xl rounded-lg shadow-lg border border-gray-200/50 p-1">
                   <div className="flex">
                     {allModules.map((module: any, index: number) => {
-                      const isHidden = accountHiddenModules.includes(module.id);
                       const isActive = activeModule === module.id;
                       return (
-                        <div key={module.id} className={`flex-1 relative ${isHidden ? 'opacity-50' : ''
-                          }`}>
+                        <div key={module.id} className="flex-1">
                           <button
-                            onClick={() => !isHidden && handleModuleChange(module.id)}
-                            disabled={isHidden}
-                            className={`w-full px-4 py-3 text-sm font-medium transition-all duration-200 ${isActive && !isHidden
+                            onClick={() => handleModuleChange(module.id)}
+                            className={`w-full px-4 py-3 text-sm font-medium transition-all duration-200 ${isActive
                               ? 'bg-gradient-to-r from-[#751FAE] to-[#EF3C99] text-white shadow-md'
-                              : isHidden
-                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                : 'bg-transparent hover:bg-gray-50 text-gray-700'
+                              : 'bg-transparent hover:bg-gray-50 text-gray-700'
                               } ${index === 0 ? 'rounded-l-lg' : index === allModules.length - 1 ? 'rounded-r-lg' : ''
                               }`}
                           >
                             {module.name}
-                          </button>
-                          <button
-                            onClick={() => toggleModuleVisibility(module.id)}
-                            className="absolute top-1 right-1 p-1 rounded-full hover:bg-black/10 transition-colors duration-200"
-                            title={isHidden ? 'Show module' : 'Hide module'}
-                          >
-                            {isHidden ? (
-                              <EyeOff className="w-3 h-3 text-gray-400" />
-                            ) : (
-                              <Eye className="w-3 h-3 text-gray-500 hover:text-gray-700" />
-                            )}
                           </button>
                         </div>
                       );
@@ -1462,6 +1410,11 @@ export default function Home() {
                 {/* Campaign Overview Module */}
                 <div style={{ display: activeModule === 'campaign-overview' ? 'block' : 'none' }}>
                   <div className="max-w-7xl mx-auto mb-4 space-y-6">
+                    <WeeklyCostTrendOverview
+                      xiaowangTestData={activeTestData}
+                      brokerData={brokerDataJson}
+                    />
+
                     <XiaowangTestCampaignOverview
                       dailyData={combinedDailyData}
                       brokerData={brokerDataJson}
@@ -1474,13 +1427,17 @@ export default function Home() {
                       dailyData={xiaowangTestData?.dailyData || []}
                       startDate={startDate}
                       endDate={endDate}
+                      notesData={xiaowangTestNotesData}
+                      accountName="小王"
                     />
 
                     <AccountPerformanceOverview
                       title="LifeCAR Performance Overview"
-                      dailyData={normalizedLifeCarData}
+                      dailyData={lifeCarDailyData}
                       startDate={startDate}
                       endDate={endDate}
+                      notesData={lifeCarNotesData}
+                      accountName="LifeCAR"
                     />
                   </div>
                 </div>
@@ -1489,7 +1446,48 @@ export default function Home() {
                 <div style={{ display: activeModule === 'cost' ? 'block' : 'none' }}>
                   {/* Main Content */}
                   <div className="max-w-7xl mx-auto mb-4">
-                    <Accordion type="multiple" defaultValue={["monthly-analysis", "weekly-performance", "day-of-week-analysis"]} className="space-y-4">
+                    <Accordion type="multiple" defaultValue={["weekly-performance", "monthly-analysis"]} className="space-y-4">
+
+                      {/* Weekly Performance Section */}
+                      <AccordionItem value="weekly-performance" id="weekly-performance" className="bg-white/95 backdrop-blur-xl rounded-lg border border-gray-200/50 shadow-lg">
+                        <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                          <div className="flex items-center justify-between w-full pr-4">
+                            <h2 className="text-xl font-semibold bg-gradient-to-r from-[#751FAE] to-[#EF3C99] bg-clip-text text-transparent font-montserrat flex items-center gap-2">
+                              <div className="w-4 h-4 bg-[#751FAE]"></div>
+                              Weekly Performance
+                            </h2>
+                            <div className="flex items-center gap-3" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+                              <span className="text-sm font-medium text-gray-700">Latest</span>
+                              <input
+                                type="number"
+                                value={weeklyTimePeriod}
+                                onChange={(e) => {
+                                  const value = parseInt(e.target.value);
+                                  if (value > 0 && value <= 104) {
+                                    setWeeklyTimePeriod(value);
+                                  }
+                                }}
+                                className="w-16 px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                min="1"
+                                max="104"
+                              />
+                              <span className="text-sm font-medium text-gray-700">weeks</span>
+                            </div>
+                          </div>
+                        </AccordionTrigger>
+                        <AccordionContent className="px-6 pb-6">
+                          <div className="space-y-8">
+                            <XiaowangTestWeeklyCostPerMetric
+                              xiaowangTestData={activeTestData}
+                              brokerData={brokerDataJson}
+                              selectedMetric={xiaowangSelectedMetric}
+                              onMetricChange={setXiaowangSelectedMetric}
+                              weeklyTimePeriod={weeklyTimePeriod}
+                              notesWeeklyCount={xiaowangNotesWeeklyCount}
+                            />
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
 
                       {/* Monthly Analysis Section */}
                       <AccordionItem value="monthly-analysis" id="monthly-analysis" className="bg-white/95 backdrop-blur-xl rounded-lg border border-gray-200/50 shadow-lg">
@@ -1515,82 +1513,6 @@ export default function Home() {
                               selectedMetric={xiaowangSelectedMetric}
                               onMetricChange={setXiaowangSelectedMetric}
                               notesMonthlyCount={xiaowangNotesMonthlyCount}
-                            />
-                          </div>
-                        </AccordionContent>
-                      </AccordionItem>
-
-                      {/* Weekly Performance Section */}
-                      <AccordionItem value="weekly-performance" id="weekly-performance" className="bg-white/95 backdrop-blur-xl rounded-lg border border-gray-200/50 shadow-lg">
-                        <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                          <div className="flex items-center justify-between w-full pr-4">
-                            <h2 className="text-xl font-semibold bg-gradient-to-r from-[#751FAE] to-[#EF3C99] bg-clip-text text-transparent font-montserrat flex items-center gap-2">
-                              <div className="w-4 h-4 bg-[#751FAE]"></div>
-                              Weekly Performance
-                            </h2>
-                            <div className="flex items-center gap-3" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-                              <span className="text-sm font-medium text-gray-700">Latest</span>
-                              <input
-                                type="number"
-                                value={weeklyTimePeriod}
-                                onChange={(e) => {
-                                  const value = parseInt(e.target.value);
-                                  if (value > 0 && value <= 104) { // Max 2 years = 104 weeks
-                                    setWeeklyTimePeriod(value);
-                                  }
-                                }}
-                                className="w-16 px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                                min="1"
-                                max="104"
-                              />
-                              <span className="text-sm font-medium text-gray-700">weeks</span>
-                            </div>
-                          </div>
-                        </AccordionTrigger>
-                        <AccordionContent className="px-6 pb-6">
-                          <div className="space-y-8">
-                            <XiaowangTestWeeklyCostPerMetric
-                              xiaowangTestData={activeTestData}
-                              brokerData={brokerDataJson}
-                              selectedMetric={xiaowangSelectedMetric}
-                              onMetricChange={setXiaowangSelectedMetric}
-                              weeklyTimePeriod={weeklyTimePeriod}
-                              notesWeeklyCount={xiaowangNotesWeeklyCount}
-                            />
-
-                            <XiaowangTestWeeklyCostAnalysis
-                              xiaowangTestData={activeTestData}
-                              brokerData={brokerDataJson}
-                              selectedMetric={xiaowangSelectedMetric}
-                              onMetricChange={setXiaowangSelectedMetric}
-                              weeklyTimePeriod={weeklyTimePeriod}
-                              notesWeeklyCount={xiaowangNotesWeeklyCount}
-                            />
-                          </div>
-                        </AccordionContent>
-                      </AccordionItem>
-
-                      {/* Day of Week Analysis Section */}
-                      <AccordionItem value="day-of-week-analysis" id="day-of-week-analysis" className="bg-white/95 backdrop-blur-xl rounded-lg border border-gray-200/50 shadow-lg">
-                        <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                          <h2 className="text-xl font-semibold bg-gradient-to-r from-[#751FAE] to-[#EF3C99] bg-clip-text text-transparent font-montserrat flex items-center gap-2">
-                            <div className="w-4 h-4 bg-[#751FAE]"></div>
-                            Daily Analysis
-                          </h2>
-                        </AccordionTrigger>
-                        <AccordionContent className="px-6 pb-6">
-                          <div className="space-y-8">
-                            <XiaowangTestCostAnalysis
-                              xiaowangTestData={activeTestData}
-                              brokerData={brokerDataJson}
-                              startDate={startDate}
-                              endDate={endDate}
-                              selectedMetric={xiaowangSelectedMetric}
-                              onMetricChange={setXiaowangSelectedMetric}
-                              isFiltered={xiaowangChartFiltered}
-                              onFilterChange={setXiaowangChartFiltered}
-                              notesData={xiaowangTestNotesData}
-                              notesWeekdayCount={xiaowangNotesWeekdayCount}
                             />
                           </div>
                         </AccordionContent>
@@ -1687,37 +1609,43 @@ export default function Home() {
             )}
 
             {/* 浮动笔记按钮 */}
-            {filteredXiaowangTestData && (
-              <div className="fixed top-1/2 right-6 transform -translate-y-1/2 z-40 space-y-2">
-                <Button
-                  onClick={() => setShowXiaowangNotesModal(true)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2 rounded-full px-4 py-3"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  <span className="font-medium">Posts</span>
-                </Button>
-                {selectedXiaowangNoteDates.length > 0 && (
+            {filteredXiaowangTestData && (() => {
+              const isLifeCar = selectedAccount === 'lifecar'
+              const openModal = isLifeCar ? () => setShowNotesModal(true) : () => setShowXiaowangNotesModal(true)
+              const selectedDates = isLifeCar ? selectedNoteDates : selectedXiaowangNoteDates
+              const clearDates = isLifeCar ? () => setSelectedNoteDates([]) : () => setSelectedXiaowangNoteDates([])
+              return (
+                <div className="fixed top-1/2 right-6 transform -translate-y-1/2 z-40 space-y-2">
                   <Button
-                    onClick={() => setSelectedXiaowangNoteDates([])}
-                    variant="outline"
-                    size="sm"
-                    className="bg-white/90 border-blue-200 text-blue-600 hover:bg-blue-50"
+                    onClick={openModal}
+                    className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2 rounded-full px-4 py-3"
                   >
-                    清除选中 ({selectedXiaowangNoteDates.length})
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <span className="font-medium">Posts</span>
                   </Button>
-                )}
-                {selectedXiaowangNoteDates.length > 0 && (
-                  <div className="text-xs text-gray-600 bg-white/95 backdrop-blur-sm px-3 py-2 rounded-lg shadow-md border border-blue-200/50 max-h-32 overflow-y-auto">
-                    <div className="font-medium text-blue-600 mb-1">选中的笔记日期:</div>
-                    {[...selectedXiaowangNoteDates].sort().map((date: string, index: number) => (
-                      <div key={index} className="text-gray-600 py-0.5">{date}</div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+                  {selectedDates.length > 0 && (
+                    <Button
+                      onClick={clearDates}
+                      variant="outline"
+                      size="sm"
+                      className="bg-white/90 border-blue-200 text-blue-600 hover:bg-blue-50"
+                    >
+                      清除选中 ({selectedDates.length})
+                    </Button>
+                  )}
+                  {selectedDates.length > 0 && (
+                    <div className="text-xs text-gray-600 bg-white/95 backdrop-blur-sm px-3 py-2 rounded-lg shadow-md border border-blue-200/50 max-h-32 overflow-y-auto">
+                      <div className="font-medium text-blue-600 mb-1">选中的笔记日期:</div>
+                      {[...selectedDates].sort().map((date: string, index: number) => (
+                        <div key={index} className="text-gray-600 py-0.5">{date}</div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
 
           </>
         )}

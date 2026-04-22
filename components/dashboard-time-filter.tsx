@@ -40,11 +40,11 @@ export function DashboardTimeFilter({
 
   if (isSticky) {
     return (
-      <div className="absolute top-full left-0 right-0 bg-white/[0.73] backdrop-blur-3xl border-b border-purple-200/40 shadow-lg z-[99] transition-all duration-300 animate-in fade-in slide-in-from-top-2">
-        <div className="w-full px-8 py-2">
+      <div className="w-full bg-white/[0.73] backdrop-blur-3xl border-t border-purple-200/40">
+        <div className="w-full px-4 md:px-8 py-2">
           <div className="max-w-7xl mx-auto">
             <div className="flex flex-wrap items-center gap-2 justify-center">
-              {/* Compact date inputs */}
+              {/* Date inputs */}
               <div className="flex items-center gap-2">
                 <input
                   type="date"
@@ -52,40 +52,40 @@ export function DashboardTimeFilter({
                   onChange={(e) => setStartDate(e.target.value)}
                   min={minDate}
                   max={maxDate}
-                  className="text-xs border border-gray-300 rounded px-2 py-1 bg-white/90 backdrop-blur-sm focus:border-purple-400 focus:outline-none h-7"
+                  className="text-sm border border-gray-300 rounded-md px-2.5 py-1.5 bg-white/90 backdrop-blur-sm focus:border-purple-400 focus:outline-none h-9"
                   placeholder="Start"
                 />
-                <span className="text-xs text-gray-500">to</span>
+                <span className="text-sm text-gray-500 font-medium">to</span>
                 <input
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
                   min={minDate}
                   max={maxDate}
-                  className="text-xs border border-gray-300 rounded px-2 py-1 bg-white/90 backdrop-blur-sm focus:border-purple-400 focus:outline-none h-7"
+                  className="text-sm border border-gray-300 rounded-md px-2.5 py-1.5 bg-white/90 backdrop-blur-sm focus:border-purple-400 focus:outline-none h-9"
                   placeholder="End"
                 />
               </div>
 
               {/* Quick action buttons */}
-              <Button 
-                onClick={handleLastWeek} 
+              <Button
+                onClick={handleLastWeek}
                 variant="secondary"
                 size="sm"
                 className={`${
-                  isLastWeekSelected() 
-                    ? 'bg-purple-400/90 text-white hover:bg-purple-500/90' 
+                  isLastWeekSelected()
+                    ? 'bg-purple-400/90 text-white hover:bg-purple-500/90'
                     : 'bg-purple-100/80 text-purple-700 hover:bg-purple-200/80'
-                } transition-all duration-200 font-medium h-7 px-2 text-xs backdrop-blur-sm`}
+                } transition-all duration-200 font-semibold h-9 px-3 text-sm backdrop-blur-sm`}
               >
                 Last Week
               </Button>
-              
-              <Button 
-                onClick={handleClearFilter} 
+
+              <Button
+                onClick={handleClearFilter}
                 variant="outline"
                 size="sm"
-                className="bg-white/80 border-gray-300 text-gray-700 hover:bg-gray-100/80 hover:border-gray-400 transition-all duration-200 h-7 px-2 text-xs backdrop-blur-sm"
+                className="bg-white/80 border-gray-300 text-gray-700 hover:bg-gray-100/80 hover:border-gray-400 transition-all duration-200 h-9 px-3 text-sm backdrop-blur-sm"
               >
                 Clear
               </Button>
@@ -97,13 +97,13 @@ export function DashboardTimeFilter({
                     onClick={handlePreviousPeriod}
                     variant="outline"
                     size="sm"
-                    className="flex items-center gap-1 bg-white/80 border-gray-300 text-gray-700 hover:bg-purple-50/80 hover:border-purple-400 hover:text-purple-700 transition-all duration-200 h-7 px-2 text-xs backdrop-blur-sm"
+                    className="flex items-center gap-1 bg-white/80 border-gray-300 text-gray-700 hover:bg-purple-50/80 hover:border-purple-400 hover:text-purple-700 transition-all duration-200 h-9 px-3 text-sm backdrop-blur-sm"
                   >
-                    <ChevronLeft className="h-3 w-3" />
+                    <ChevronLeft className="h-4 w-4" />
                     <span className="hidden sm:inline">Prev</span>
                   </Button>
-                  
-                  <div className="text-xs text-gray-500 font-medium flex items-center px-1">
+
+                  <div className="text-sm text-gray-600 font-semibold flex items-center px-1.5">
                     {(() => {
                       const start = new Date(startDate);
                       const end = new Date(endDate);
@@ -111,15 +111,15 @@ export function DashboardTimeFilter({
                       return `${days}d`;
                     })()}
                   </div>
-                  
+
                   <Button
                     onClick={handleNextPeriod}
                     variant="outline"
                     size="sm"
-                    className="flex items-center gap-1 bg-white/80 border-gray-300 text-gray-700 hover:bg-purple-50/80 hover:border-purple-400 hover:text-purple-700 transition-all duration-200 h-7 px-2 text-xs backdrop-blur-sm"
+                    className="flex items-center gap-1 bg-white/80 border-gray-300 text-gray-700 hover:bg-purple-50/80 hover:border-purple-400 hover:text-purple-700 transition-all duration-200 h-9 px-3 text-sm backdrop-blur-sm"
                   >
                     <span className="hidden sm:inline">Next</span>
-                    <ChevronRight className="h-3 w-3" />
+                    <ChevronRight className="h-4 w-4" />
                   </Button>
                 </>
               )}

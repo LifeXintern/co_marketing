@@ -3,7 +3,15 @@
 import React, { useMemo } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { formatDateWithWeekday } from "@/lib/date-utils"
+import {
+  type Granularity,
+  GRANULARITY_LABEL,
+  bucketKeyFor,
+  formatBucketLabel,
+  pickGranularity,
+  spanInDays,
+  xAxisInterval,
+} from "@/lib/chart-aggregation"
 
 interface XiaowangTestCampaignOverviewProps {
   dailyData?: any[]
@@ -24,8 +32,8 @@ function processData(
   brokerData: any[],
   startDate?: string,
   endDate?: string
-): DailyMetrics[] {
-  if (!dailyData || !Array.isArray(dailyData)) return []
+): { chartData: DailyMetrics[]; granularity: Granularity } {
+  if (!dailyData || !Array.isArray(dailyData)) return { chartData: [], granularity: 'day' }
 
   // Build leads-per-date from broker data (account-independent)
   const leadsPerDate: Record<string, number> = {}
@@ -50,26 +58,43 @@ function processData(
   }
 
   // Collect all dates: union of ad dates + lead dates, filtered by range
-  const allDates = new Set<string>([
+  const allDates = Array.from(new Set<string>([
     ...dailyData.map((d: any) => d.date).filter(Boolean),
     ...Object.keys(leadsPerDate),
-  ])
-
-  return Array.from(allDates)
+  ]))
     .filter(date => {
       if (startDate && endDate) return date >= startDate && date <= endDate
       return true
     })
-    .map(date => {
-      const adItem = dailyData.find((d: any) => d.date === date)
-      return {
-        date,
-        displayDate: formatDateWithWeekday(date),
-        cost: adItem?.cost || 0,
-        leads: leadsPerDate[date] || 0,
-      }
-    })
-    .sort((a, b) => a.date.localeCompare(b.date))
+    .sort()
+
+  if (allDates.length === 0) return { chartData: [], granularity: 'day' }
+
+  const granularity = pickGranularity(
+    spanInDays(startDate, endDate, allDates[0], allDates[allDates.length - 1])
+  )
+
+  // Bucket and sum
+  const buckets = new Map<string, { cost: number; leads: number }>()
+  for (const date of allDates) {
+    const key = bucketKeyFor(date, granularity)
+    const adItem = dailyData.find((d: any) => d.date === date)
+    const bucket = buckets.get(key) || { cost: 0, leads: 0 }
+    bucket.cost += adItem?.cost || 0
+    bucket.leads += leadsPerDate[date] || 0
+    buckets.set(key, bucket)
+  }
+
+  const chartData: DailyMetrics[] = Array.from(buckets.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, v]) => ({
+      date: key,
+      displayDate: formatBucketLabel(key, granularity),
+      cost: v.cost,
+      leads: v.leads,
+    }))
+
+  return { chartData, granularity }
 }
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -92,9 +117,14 @@ export function XiaowangTestCampaignOverview({
   dailyData = [],
   brokerData = [],
   startDate,
-  endDate
+  endDate,
 }: XiaowangTestCampaignOverviewProps) {
-  const chartData = useMemo(() => processData(dailyData, brokerData, startDate, endDate), [dailyData, brokerData, startDate, endDate])
+  const { chartData, granularity } = useMemo(
+    () => processData(dailyData, brokerData, startDate, endDate),
+    [dailyData, brokerData, startDate, endDate]
+  )
+  const showDots = granularity !== 'day'
+  const xInterval = xAxisInterval(chartData.length)
 
   const { leftAxisDomain, rightAxisDomain } = useMemo(() => {
     if (!chartData.length) return { leftAxisDomain: [0, 100], rightAxisDomain: [0, 10] }
@@ -110,7 +140,7 @@ export function XiaowangTestCampaignOverview({
     return (
       <Card className="bg-white/95 backdrop-blur-xl shadow-lg border border-gray-200/50">
         <CardHeader>
-          <CardTitle className="text-xl font-semibold text-gray-900 font-montserrat">Trend Overview</CardTitle>
+          <CardTitle className="text-xl font-semibold text-gray-900 font-montserrat">Daily Cost Trend Overview</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="h-96 flex items-center justify-center text-gray-500">No data available for the selected period</div>
@@ -122,8 +152,11 @@ export function XiaowangTestCampaignOverview({
   return (
     <Card className="bg-white/95 backdrop-blur-xl shadow-lg border border-gray-200/50">
       <CardHeader>
-        <CardTitle className="text-xl font-semibold text-gray-900 font-montserrat">Trend Overview</CardTitle>
-        <p className="text-sm text-gray-600 mt-1">Combined Total Cost and Total Leads across both accounts</p>
+        <CardTitle className="text-xl font-semibold text-gray-900 font-montserrat">Daily Cost Trend Overview</CardTitle>
+        <p className="text-sm text-gray-600 mt-1">
+          Combined Total Cost and Total Leads across both accounts
+          <span className="ml-2 text-gray-500">· {GRANULARITY_LABEL[granularity]}</span>
+        </p>
       </CardHeader>
       <CardContent>
         <div className="h-96">
@@ -136,7 +169,7 @@ export function XiaowangTestCampaignOverview({
                 textAnchor="end"
                 height={80}
                 tick={{ fontSize: 11 }}
-                interval={Math.floor(chartData.length / 20)}
+                interval={xInterval}
               />
               <YAxis
                 yAxisId="left"
@@ -153,8 +186,8 @@ export function XiaowangTestCampaignOverview({
               />
               <Tooltip content={<CustomTooltip />} />
               <Legend wrapperStyle={{ paddingTop: '20px' }} iconType="line" />
-              <Line yAxisId="left" type="monotone" dataKey="cost" name="Total Cost" stroke="#751FAE" strokeWidth={2.5} dot={false} activeDot={{ r: 6 }} />
-              <Line yAxisId="right" type="monotone" dataKey="leads" name="Total Leads" stroke="#F59E0B" strokeWidth={2.5} dot={false} activeDot={{ r: 6 }} />
+              <Line yAxisId="left" type="monotone" dataKey="cost" name="Total Cost" stroke="#751FAE" strokeWidth={2.5} dot={showDots ? { r: 3 } : false} activeDot={{ r: 6 }} />
+              <Line yAxisId="right" type="monotone" dataKey="leads" name="Total Leads" stroke="#F59E0B" strokeWidth={2.5} dot={showDots ? { r: 3 } : false} activeDot={{ r: 6 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>

@@ -4,6 +4,17 @@ import React, { useMemo, useState, useEffect } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LabelList, ReferenceLine } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { weekStartKey } from '@/lib/chart-aggregation'
+
+function weekEndISO(weekStartStr: string): string {
+  const d = new Date(weekStartStr + 'T00:00:00Z')
+  d.setUTCDate(d.getUTCDate() + 6)
+  return d.toISOString().split('T')[0]
+}
+
+function fmtWeekDate(dateStr: string): string {
+  return new Date(dateStr + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+}
 
 interface XiaowangTestWeeklyCostAnalysisProps {
   xiaowangTestData?: any
@@ -64,16 +75,8 @@ function processXiaowangTestWeeklyData(xiaowangTestData: any, brokerData: any[])
       }
 
       if (dateValue) {
-        const d = new Date(dateValue)
-        if (!isNaN(d.getTime())) {
-          const dow = d.getDay()
-          const mondayOffset = dow === 0 ? 6 : dow - 1
-          const monday = new Date(d)
-          monday.setDate(d.getDate() - mondayOffset)
-          monday.setHours(0, 0, 0, 0)
-          const weekKey = monday.toISOString().split('T')[0]
-          leadsPerWeek[weekKey] = (leadsPerWeek[weekKey] || 0) + 1
-        }
+        const weekKey = weekStartKey(dateValue)
+        leadsPerWeek[weekKey] = (leadsPerWeek[weekKey] || 0) + 1
       }
     })
   }
@@ -90,27 +93,14 @@ function processXiaowangTestWeeklyData(xiaowangTestData: any, brokerData: any[])
   }> = {}
 
   xiaowangTestData.dailyData.forEach((dailyItem: any) => {
-    const date = new Date(dailyItem.date)
-    if (isNaN(date.getTime())) return
+    if (!dailyItem.date || isNaN(new Date(dailyItem.date).getTime())) return
 
-    // Get the start of the week (Monday)
-    const dayOfWeek = date.getDay()
-    const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1 // Sunday = 0, so we need to go back 6 days
-    const weekStart = new Date(date)
-    weekStart.setDate(date.getDate() - mondayOffset)
-    weekStart.setHours(0, 0, 0, 0)
-
-    // Get the end of the week (Sunday)
-    const weekEnd = new Date(weekStart)
-    weekEnd.setDate(weekStart.getDate() + 6)
-
-    const weekKey = weekStart.toISOString().split('T')[0]
-    const dateKey = dailyItem.date
+    const weekKey = weekStartKey(dailyItem.date)
 
     if (!weeklyMap[weekKey]) {
       weeklyMap[weekKey] = {
-        weekStart: weekStart.toISOString().split('T')[0],
-        weekEnd: weekEnd.toISOString().split('T')[0],
+        weekStart: weekKey,
+        weekEnd: weekEndISO(weekKey),
         views: 0,
         likes: 0,
         followers: 0,
@@ -134,7 +124,7 @@ function processXiaowangTestWeeklyData(xiaowangTestData: any, brokerData: any[])
   // Convert to array and format
   return Object.entries(weeklyMap)
     .map(([weekKey, data]) => ({
-      week: `${new Date(data.weekStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${new Date(data.weekEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
+      week: `${fmtWeekDate(data.weekStart)} - ${fmtWeekDate(data.weekEnd)}`,
       weekStart: data.weekStart,
       weekEnd: data.weekEnd,
       views: data.views,

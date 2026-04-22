@@ -34,7 +34,6 @@ export interface LifeCarMonthlyData {
   totalFollowers: number
   totalInteractions: number
   totalImpressions: number
-  totalPrivateMessages: number
   avgDailySpend: number
   avgDailyInteractions: number
   cpm: number // 每千次展现成本
@@ -47,7 +46,6 @@ export interface LifeCarWeeklyData {
   totalFollowers: number
   totalInteractions: number
   totalImpressions: number
-  totalPrivateMessages: number
   avgDailySpend: number
 }
 
@@ -128,8 +126,8 @@ export function parseLifeCarData(csvText: string): LifeCarDailyData[] {
       readCountAfterSearch: parseInt(col(columns, '搜后阅读量')) || 0,
       multiConversion1: parseInt(col(columns, '新增种草人群', '多转化人数（添加企微+私信咨询）', '多转化人数(添加企微+私信咨询)')) || 0,
       multiConversionCost1: (parseFloat(col(columns, '新增种草人群成本', '多转化成本（添加企微+私信咨询）', '多转化成本(添加企微+私信咨询)')) || 0) / RMB_TO_AUD_RATE,
-      multiConversion2: parseInt(col(columns, '新增深度种草人群', '多转化人数（添加企微成功+私信留资）', '多转化人数(添加企微成功+私信留资)')) || 0,
-      multiConversionCost2: (parseFloat(col(columns, '新增深度种草人群成本', '多转化成本（添加企微成功+私信留资）', '多转化成本(添加企微成功+私信留资)')) || 0) / RMB_TO_AUD_RATE,
+      multiConversion2: parseInt(col(columns, '新增深度种草人群', '多转化人数（添加企微成功+私信留资）', '多转化人数(添加企微成功+私信留资)', '多转化人数（私信留资+添加企微成功）', '多转化人数(私信留资+添加企微成功)')) || 0,
+      multiConversionCost2: (parseFloat(col(columns, '新增深度种草人群成本', '多转化成本（添加企微成功+私信留资）', '多转化成本(添加企微成功+私信留资)', '多转化成本（私信留资+添加企微成功）', '多转化成本(私信留资+添加企微成功)')) || 0) / RMB_TO_AUD_RATE,
     })
   }
 
@@ -153,16 +151,14 @@ export function aggregateByMonth(dailyData: LifeCarDailyData[]): LifeCarMonthlyD
     const totalFollowers = items.reduce((sum, item) => sum + item.followers, 0)
     const totalInteractions = items.reduce((sum, item) => sum + item.interactions, 0)
     const totalImpressions = items.reduce((sum, item) => sum + item.impressions, 0)
-    const totalPrivateMessages = items.reduce((sum, item) => sum + item.privateMessages, 0)
     const daysCount = items.length
-    
+
     return {
       month,
       totalSpend,
       totalFollowers,
       totalInteractions,
       totalImpressions,
-      totalPrivateMessages,
       avgDailySpend: totalSpend / daysCount,
       avgDailyInteractions: totalInteractions / daysCount,
       cpm: totalImpressions > 0 ? (totalSpend / totalImpressions) * 1000 : 0,
@@ -192,16 +188,14 @@ export function aggregateByWeek(dailyData: LifeCarDailyData[]): LifeCarWeeklyDat
     const totalFollowers = items.reduce((sum, item) => sum + item.followers, 0)
     const totalInteractions = items.reduce((sum, item) => sum + item.interactions, 0)
     const totalImpressions = items.reduce((sum, item) => sum + item.impressions, 0)
-    const totalPrivateMessages = items.reduce((sum, item) => sum + item.privateMessages, 0)
     const daysCount = items.length
-    
+
     return {
       week,
       totalSpend,
       totalFollowers,
       totalInteractions,
       totalImpressions,
-      totalPrivateMessages,
       avgDailySpend: totalSpend / daysCount
     }
   }).sort((a, b) => a.week.localeCompare(b.week))

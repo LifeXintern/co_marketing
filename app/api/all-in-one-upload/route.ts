@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import * as XLSX from 'xlsx'
 import { parse } from 'csv-parse/sync'
-import { getNotesStore as getLifeCarNotesStore } from '@/app/api/lifecar-notes/notes-store'
-import { getXiaoWangTestNotesStore } from '@/app/api/xiaowang-test-notes/notes-store'
 
 // Normalize broker names: trim whitespace, title-case each word, fix known typos.
 // Returns empty string for blank entries so downstream components can apply their own logic.
@@ -389,17 +387,20 @@ export async function POST(request: NextRequest) {
           return isValid
         })
 
-        // Only return specific columns: 笔记发布时间, 笔记类型, 笔记名称, 笔记链接
-        const processedNotesData = filteredData.map(row => ({
+        const processedNotesData = filteredData.map((row: any) => ({
           发布时间: row['笔记发布时间'] || '',
           类型: row['笔记类型'] || '',
           名称: row['笔记名称'] || '',
-          链接: row['笔记链接'] || ''
+          链接: row['笔记链接'] || '',
+          views: parseInt(row['阅读uv'] || row['阅读UV'] || '0') || 0,
+          likes: parseInt(row['点赞量'] || '0') || 0,
+          comments: parseInt(row['评论量'] || '0') || 0,
+          saves: parseInt(row['收藏量'] || '0') || 0,
+          followers: parseInt(row['关注量'] || '0') || 0,
+          shares: parseInt(row['分享量'] || '0') || 0,
+          videoCompletionRate: parseFloat(String(row['视频笔记完播率'] || '0').replace('%', '')) || 0,
+          organicImpressions: parseInt(row['自然曝光量'] || '0') || 0,
         }))
-
-        // Store in memory using the notes store
-        const notesStore = getXiaoWangTestNotesStore()
-        notesStore.setData(processedNotesData)
 
         processedData.xiaowangNotes = processedNotesData
         processed.xiaowangNotes = true
@@ -440,73 +441,55 @@ export async function POST(request: NextRequest) {
             console.log(`LifeCar Row ${index} date: raw="${row['时间'] || row['Date'] || row['日期']}" -> formatted="${dateStr}"`)
           }
 
-          // 返回数据，日期已格式化，货币转换为AUD（与单个上传保持一致）
           return {
-            date: dateStr,  // YYYY-MM-DD格式的日期字符串
-            spend: parseFloat(row['消费'] || row['Spend'] || row['花费'] || '0') / 4.7, // RMB转AUD
+            date: dateStr,
+            cost: parseFloat(row['消费'] || row['Spend'] || row['花费'] || '0') / 4.7,
             impressions: parseInt(row['展现量'] || row['Impressions'] || row['曝光'] || '0'),
             clicks: parseInt(row['点击量'] || row['Clicks'] || row['点击'] || '0'),
-            clickRate: parseFloat(row['点击率'] || row['Click Rate'] || row['CTR'] || '0'),
-            avgClickCost: parseFloat(row['平均点击成本'] || row['CPC'] || row['单次点击成本'] || '0') / 4.7, // RMB转AUD
-            cpm: (() => { const imp = parseInt(row['展现量'] || row['Impressions'] || '0'); return imp > 0 ? (parseFloat(row['消费'] || row['Spend'] || '0') / 4.7 / imp) * 1000 : 0 })(),
             likes: parseInt(row['点赞'] || row['Likes'] || '0'),
             comments: parseInt(row['评论'] || row['Comments'] || '0'),
             saves: parseInt(row['收藏'] || row['Saves'] || row['保存'] || '0'),
             followers: parseInt(row['关注'] || row['Followers'] || row['关注者'] || '0'),
             shares: parseInt(row['分享'] || row['Shares'] || '0'),
             interactions: parseInt(row['互动量'] || row['Interactions'] || '0'),
-            avgInteractionCost: parseFloat(row['平均互动成本'] || row['Avg Interaction Cost'] || '0') / 4.7, // RMB转AUD
-            actionButtonClicks: parseInt(row['行动按钮点击量'] || row['Action Button Clicks'] || '0'),
-            actionButtonClickRate: parseFloat(row['行动按钮点击率'] || row['Action Button Click Rate'] || '0'),
-            screenshots: parseInt(row['截图'] || row['Screenshots'] || '0'),
-            imageSaves: parseInt(row['图片保存'] || row['Image Saves'] || '0'),
-            searchClicks: parseInt(row['搜索点击'] || row['Search Clicks'] || '0'),
-            searchConversionRate: parseFloat(row['搜索转化率'] || row['Search Conversion Rate'] || '0'),
-            avgReadNotesAfterSearch: parseFloat(row['搜索后平均阅读笔记数'] || row['Avg Read Notes After Search'] || '0'),
-            readCountAfterSearch: parseInt(row['搜索后阅读数'] || row['Read Count After Search'] || '0'),
-            multiConversion1: parseInt(
+            conversions: parseInt(
               row['多转化人数（添加企微+私信咨询）']
               || row['多转化人数(添加企微+私信咨询)']
-              || row['Multi Conversion 1']
               || '0'
             ),
-            multiConversionCost1: parseFloat(
-              row['多转化成本（添加企微+私信咨询）']
-              || row['多转化成本(添加企微+私信咨询)']
-              || row['Multi Conversion Cost 1']
-              || '0'
-            ) / 4.7, // RMB转AUD
-            multiConversion2: parseInt(
-              row['多转化人数（添加企微成功+私信留资）']
-              || row['多转化人数(添加企微成功+私信留资)']
-              || row['Multi Conversion 2']
-              || '0'
-            ),
-            multiConversionCost2: parseFloat(
-              row['多转化成本（添加企微成功+私信留资）']
-              || row['多转化成本(添加企微成功+私信留资)']
-              || row['Multi Conversion Cost 2']
-              || '0'
-            ) / 4.7, // RMB转AUD
-            // 兼容旧字段名
-            ctr: parseFloat(row['点击率'] || row['CTR'] || '0'),
-            views: parseInt(row['点击量'] || row['Clicks'] || row['点击'] || '0'), // 使用点击量作为views，与单个上传一致
-            profileViews: parseInt(row['主页访问'] || row['Profile Views'] || '0'),
-            engagementRate: parseFloat(row['互动率'] || row['Engagement Rate'] || '0'),
-            interactionRate: parseFloat(row['互动率'] || row['Interaction Rate'] || '0')
           }
         })
 
-        // 返回与单个上传一致的数据结构
-        processedData.lifecarData = lifecarRawData
-        processedData.lifecar_data = lifecarRawData // 兼容性
-        processedData.daily_cost_data = lifecarRawData // 与单个上传一致
+        // Group by date (same as XiaoWang)
+        const dailyDataMap = lifecarRawData.reduce((acc: any, row: any) => {
+          const date = row.date
+          if (!date) return acc
+          if (!acc[date]) {
+            acc[date] = { date, cost: 0, impressions: 0, clicks: 0, interactions: 0, conversions: 0, followers: 0, saves: 0, likes: 0, comments: 0, shares: 0 }
+          }
+          acc[date].cost += row.cost
+          acc[date].impressions += row.impressions
+          acc[date].clicks += row.clicks
+          acc[date].interactions += row.interactions
+          acc[date].conversions += row.conversions
+          acc[date].followers += row.followers
+          acc[date].saves += row.saves
+          acc[date].likes += row.likes
+          acc[date].comments += row.comments
+          acc[date].shares += row.shares
+          return acc
+        }, {})
 
-        // 不在后端处理月度数据，让前端处理（与单个上传一致）
-        // 如果需要，可以包含原始CSV格式的文本（但Excel不需要）
+        const sortedLifeCarData = Object.values(dailyDataMap).sort((a: any, b: any) =>
+          new Date(a.date).getTime() - new Date(b.date).getTime()
+        )
+
+        processedData.lifecarData = sortedLifeCarData
+        processedData.lifecar_data = sortedLifeCarData
+        processedData.daily_cost_data = sortedLifeCarData
 
         processed.lifecarData = true
-        console.log(`Processed ${data.length} LifeCar advertising records (raw data without currency conversion)`)
+        console.log(`Processed ${sortedLifeCarData.length} LifeCar daily records`)
       } catch (error) {
         console.error('Error processing Lifecar投放 sheet:', error)
       }
@@ -535,17 +518,20 @@ export async function POST(request: NextRequest) {
           return isValid
         })
 
-        // Only return specific columns: 笔记发布时间, 笔记类型, 笔记名称, 笔记链接
         const formattedNotes = filteredData.map((row: any) => ({
           发布时间: row['笔记发布时间'] || row['发布时间'] || row['Post Time'] || '',
           类型: row['笔记类型'] || row['类型'] || row['Type'] || '',
           名称: row['笔记名称'] || row['名称'] || row['Name'] || '',
-          链接: row['笔记链接'] || row['链接'] || row['Link'] || ''
+          链接: row['笔记链接'] || row['链接'] || row['Link'] || '',
+          views: parseInt(row['阅读uv'] || row['阅读UV'] || '0') || 0,
+          likes: parseInt(row['点赞量'] || '0') || 0,
+          comments: parseInt(row['评论量'] || '0') || 0,
+          saves: parseInt(row['收藏量'] || '0') || 0,
+          followers: parseInt(row['关注量'] || '0') || 0,
+          shares: parseInt(row['分享量'] || '0') || 0,
+          videoCompletionRate: parseFloat(String(row['视频笔记完播率'] || '0').replace('%', '')) || 0,
+          organicImpressions: parseInt(row['自然曝光量'] || '0') || 0,
         }))
-
-        // Store in memory using the notes store
-        const notesStore = getLifeCarNotesStore()
-        notesStore.setData(formattedNotes)
 
         processedData.lifecarNotes = formattedNotes
         processed.lifecarNotes = true
@@ -568,8 +554,8 @@ export async function POST(request: NextRequest) {
 
     if (processedData.lifecarData) {
       (processedData.lifecarData as any[]).forEach((row: any) => {
-        if (row.date && (row.multiConversion1 || 0) > 0) {
-          messageMap[row.date] = (messageMap[row.date] || 0) + row.multiConversion1
+        if (row.date && (row.conversions || 0) > 0) {
+          messageMap[row.date] = (messageMap[row.date] || 0) + row.conversions
         }
       })
     }
