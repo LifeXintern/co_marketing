@@ -1026,7 +1026,14 @@ export default function Home() {
         {/* 时间筛选器 - 作为导航栏的一部分，随导航栏吸附。Upload 按钮置于左侧（LifeX 标志下方） */}
         {activeDailyData.length > 0 && filteredXiaowangTestData && (
           <div className="relative">
-            <div className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 z-10">
+            <div
+              className="absolute z-10"
+              style={{
+                left: 'calc(max(0px, (100% - 84rem) / 2) + 2rem + 3.97rem)',
+                top: '50%',
+                transform: 'translateX(-50%) translateY(-50%)',
+              }}
+            >
               <button
                 type="button"
                 onClick={() => {

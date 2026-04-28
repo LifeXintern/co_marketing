@@ -37,7 +37,7 @@ export function DashboardHeader({
 
   return (
     <div className="w-full px-4 md:px-8">
-      <div className="max-w-7xl mx-auto flex flex-wrap items-center gap-3 md:gap-4 py-2.5 md:py-3">
+      <div className="max-w-7xl mx-auto relative flex items-center gap-3 md:gap-4 py-2.5 md:py-3">
         {/* 左侧：Logo */}
         <div className="flex items-center gap-4 flex-shrink-0">
           <img
@@ -47,8 +47,8 @@ export function DashboardHeader({
           />
         </div>
 
-        {/* 中间：标题区域 */}
-        <div className="flex-1 min-w-[220px] text-center">
+        {/* 中间：标题区域 — absolutely centered in the full nav width */}
+        <div className="absolute left-1/2 -translate-x-1/2 text-center pointer-events-none whitespace-nowrap">
           <h1 className="text-2xl md:text-4xl font-black bg-gradient-to-r from-[#751FAE] to-[#EF3C99] bg-clip-text text-transparent font-montserrat leading-tight">
             Marketing Dashboard
           </h1>
