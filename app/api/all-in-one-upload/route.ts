@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import * as XLSX from 'xlsx'
 import { parse } from 'csv-parse/sync'
+import { dateRange, fetchCnyPerAudRates, rmbToAud } from '@/lib/exchange-rate'
 
 // Normalize broker names: trim whitespace, title-case each word, fix known typos.
 // Returns empty string for blank entries so downstream components can apply their own logic.
@@ -238,48 +239,46 @@ export async function POST(request: NextRequest) {
         const sheet = workbook.Sheets['小王投放']
         const data = XLSX.utils.sheet_to_json(sheet)  // 移除选项，与单个上传保持一致
 
-        const advertisingData = data.map((row: any, index: number) => {
-          // 转换Excel序列号日期为YYYY-MM-DD格式以便filter工作
+        // 预先把每行日期转换为 YYYY-MM-DD，并按日期区间抓取 CNY/AUD 历史汇率
+        const advDates = (data as any[]).map((row: any) => {
           const rawDate = row['时间'] || '';
-          let formattedDate = rawDate;
-
           if (typeof rawDate === 'number') {
-            // Excel date serial number to Date object
             const dateObj = new Date((rawDate - 25569) * 86400 * 1000);
-            if (!isNaN(dateObj.getTime())) {
-              formattedDate = dateObj.toISOString().split('T')[0]; // YYYY-MM-DD
-            }
+            if (!isNaN(dateObj.getTime())) return dateObj.toISOString().split('T')[0];
           } else if (typeof rawDate === 'string' && rawDate.includes('/')) {
-            // Handle D/M/YYYY format (如 "1/9/2024")
             const parts = rawDate.split('/');
             if (parts.length === 3) {
-              const day = parts[0].padStart(2, '0');
-              const month = parts[1].padStart(2, '0');
-              const year = parts[2];
-              formattedDate = `${year}-${month}-${day}`;
+              return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
             }
           }
+          return rawDate;
+        });
+        const [advStart, advEnd] = dateRange(advDates);
+        const advRateMap = await fetchCnyPerAudRates(advStart, advEnd);
+
+        const advertisingData = data.map((row: any, index: number) => {
+          const formattedDate = advDates[index];
 
           // 调试前5行数据
           if (index < 5) {
-            console.log(`XiaoWang Advertising Row ${index} date conversion: "${rawDate}" -> "${formattedDate}"`);
+            console.log(`XiaoWang Advertising Row ${index} date: "${row['时间']}" -> "${formattedDate}"`);
           }
 
           return {
             date: formattedDate,  // 转换为YYYY-MM-DD格式
             dateObj: null,
-            cost: (parseFloat(row['消费'] || '0')) / 4.7, // Convert RMB to AUD
+            cost: rmbToAud(parseFloat(row['消费'] || '0'), advRateMap, formattedDate), // RMB → AUD（按当行日期汇率）
             impressions: parseInt(row['展现量'] || '0'),
             clicks: parseInt(row['点击量'] || '0'),
             clickRate: parseFloat((row['点击率'] || '0').toString().replace('%', '')),
-            avgClickCost: (parseFloat(row['平均点击成本'] || '0')) / 4.7, // Convert RMB to AUD
+            avgClickCost: rmbToAud(parseFloat(row['平均点击成本'] || '0'), advRateMap, formattedDate), // RMB → AUD
             likes: parseInt(row['点赞'] || '0'),
             comments: parseInt(row['评论'] || '0'),
             favorites: parseInt(row['收藏'] || '0'),
             followers: parseInt(row['关注'] || '0'),
             shares: parseInt(row['分享'] || '0'),
             interactions: parseInt(row['互动量'] || '0'),
-            avgInteractionCost: (parseFloat(row['平均互动成本'] || '0')) / 4.7, // Convert RMB to AUD
+            avgInteractionCost: rmbToAud(parseFloat(row['平均互动成本'] || '0'), advRateMap, formattedDate), // RMB → AUD
             actionClicks: parseInt(row['行动按钮点击量'] || '0'),
             actionClickRate: parseFloat((row['行动按钮点击率'] || '0').toString().replace('%', '')),
             conversions: parseInt(
@@ -287,11 +286,11 @@ export async function POST(request: NextRequest) {
               || row['多转化人数(添加企微+私信咨询)']
               || '0'
             ),
-            conversionCost: (parseFloat(
+            conversionCost: rmbToAud(parseFloat(
               row['多转化成本（添加企微+私信咨询）']
               || row['多转化成本(添加企微+私信咨询)']
               || '0'
-            )) / 4.7 // Convert RMB to AUD
+            ), advRateMap, formattedDate) // RMB → AUD
           }
         })
 
@@ -425,16 +424,15 @@ export async function POST(request: NextRequest) {
         const sheet = workbook.Sheets[lifecarDataSheetName]
         const data = XLSX.utils.sheet_to_json(sheet)  // 移除选项，与单个上传保持一致
 
-        // 与单个上传保持一致 - 不在后端转换货币，但需要处理日期格式
-        // 货币转换将在前端的 parseLifeCarData 函数中进行
-        const lifecarRawData = data.map((row: any, index: number) => {
-          // 处理日期 - 需要转换为YYYY-MM-DD格式，以便前端正常使用
-          let dateStr = row['时间'] || row['Date'] || row['日期'] || ''
+        // 预先把每行日期转换为 YYYY-MM-DD，并按日期区间抓取 CNY/AUD 历史汇率
+        const lcDates = (data as any[]).map((row: any) =>
+          formatExcelDateStr(row['时间'] || row['Date'] || row['日期'] || '') || (row['时间'] || row['Date'] || row['日期'] || '')
+        )
+        const [lcStart, lcEnd] = dateRange(lcDates)
+        const lcRateMap = await fetchCnyPerAudRates(lcStart, lcEnd)
 
-          const formatted = formatExcelDateStr(dateStr);
-          if (formatted) {
-            dateStr = formatted;
-          }
+        const lifecarRawData = data.map((row: any, index: number) => {
+          const dateStr = lcDates[index]
 
           // 调试前几行
           if (index < 5) {
@@ -443,7 +441,7 @@ export async function POST(request: NextRequest) {
 
           return {
             date: dateStr,
-            cost: parseFloat(row['消费'] || row['Spend'] || row['花费'] || '0') / 4.7,
+            cost: rmbToAud(parseFloat(row['消费'] || row['Spend'] || row['花费'] || '0'), lcRateMap, dateStr),
             impressions: parseInt(row['展现量'] || row['Impressions'] || row['曝光'] || '0'),
             clicks: parseInt(row['点击量'] || row['Clicks'] || row['点击'] || '0'),
             likes: parseInt(row['点赞'] || row['Likes'] || '0'),

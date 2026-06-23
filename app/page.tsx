@@ -14,7 +14,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 
-import { parseLifeCarData, aggregateByMonth, filterByDateRange, type LifeCarDailyData, type LifeCarMonthlyData } from "@/lib/lifecar-data-processor"
+import { parseLifeCarData, parseLifeCarDataWithRates, aggregateByMonth, filterByDateRange, type LifeCarDailyData, type LifeCarMonthlyData } from "@/lib/lifecar-data-processor"
 const LifeCarNotesModal = dynamic(() => import("@/components/lifecar-notes-modal").then(mod => mod.LifeCarNotesModal), { ssr: false })
 const XiaoWangTestNotesModal = dynamic(() => import("@/components/xiaowang-test-notes-modal").then(mod => mod.XiaoWangTestNotesModal), { ssr: false })
 
@@ -610,7 +610,7 @@ export default function Home() {
         throw new Error(`Failed to load LifeCAR data: ${response.statusText}`);
       }
       const csvText = await response.text();
-      const parsedData = parseLifeCarData(csvText).map((d: any) => ({
+      const parsedData = (await parseLifeCarDataWithRates(csvText)).map((d: any) => ({
         date: d.date,
         cost: d.spend || 0,
         impressions: d.impressions || 0,

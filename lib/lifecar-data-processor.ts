@@ -49,11 +49,11 @@ export interface LifeCarWeeklyData {
   avgDailySpend: number
 }
 
-// RMB转AUD汇率常量 (4.7 RMB = 1 AUD)
-const RMB_TO_AUD_RATE = 4.7
+import { cnyPerAudForDate, dateRange, fetchCnyPerAudRates } from "@/lib/exchange-rate"
 
 // 解析CSV数据
-export function parseLifeCarData(csvText: string): LifeCarDailyData[] {
+// rateMap 为可选的「日期→CNY-per-AUD」汇率表（按行日期换算）；不传时回退到常量汇率。
+export function parseLifeCarData(csvText: string, rateMap?: Map<string, number>): LifeCarDailyData[] {
   // Remove BOM if present
   let cleanText = csvText
   if (cleanText.charCodeAt(0) === 0xFEFF) {
@@ -101,21 +101,24 @@ export function parseLifeCarData(csvText: string): LifeCarDailyData[] {
       continue
     }
 
+    // 按当行日期取汇率（CNY per AUD），失败/缺省时回退到常量
+    const rate = cnyPerAudForDate(rateMap, formattedDate)
+
     data.push({
       date: formattedDate,
-      spend: (parseFloat(col(columns, '消费')) || 0) / RMB_TO_AUD_RATE,
+      spend: (parseFloat(col(columns, '消费')) || 0) / rate,
       impressions: parseInt(col(columns, '展现量')) || 0,
       clicks: parseInt(col(columns, '点击量')) || 0,
       clickRate: parseFloat(col(columns, '点击率').replace('%', '')) || 0,
-      avgClickCost: (parseFloat(col(columns, '平均点击成本')) || 0) / RMB_TO_AUD_RATE,
-      cpm: (() => { const imp = parseInt(col(columns, '展现量')) || 0; return imp > 0 ? ((parseFloat(col(columns, '消费')) || 0) / RMB_TO_AUD_RATE / imp) * 1000 : 0 })(),
+      avgClickCost: (parseFloat(col(columns, '平均点击成本')) || 0) / rate,
+      cpm: (() => { const imp = parseInt(col(columns, '展现量')) || 0; return imp > 0 ? ((parseFloat(col(columns, '消费')) || 0) / rate / imp) * 1000 : 0 })(),
       likes: parseInt(col(columns, '点赞')) || 0,
       comments: parseInt(col(columns, '评论')) || 0,
       saves: parseInt(col(columns, '收藏')) || 0,
       followers: parseInt(col(columns, '关注')) || 0,
       shares: parseInt(col(columns, '分享')) || 0,
       interactions: parseInt(col(columns, '互动量')) || 0,
-      avgInteractionCost: (parseFloat(col(columns, '平均互动成本')) || 0) / RMB_TO_AUD_RATE,
+      avgInteractionCost: (parseFloat(col(columns, '平均互动成本')) || 0) / rate,
       actionButtonClicks: parseInt(col(columns, '行动按钮点击量')) || 0,
       actionButtonClickRate: parseFloat(col(columns, '行动按钮点击率').replace('%', '')) || 0,
       screenshots: parseInt(col(columns, '截图')) || 0,
@@ -125,13 +128,27 @@ export function parseLifeCarData(csvText: string): LifeCarDailyData[] {
       avgReadNotesAfterSearch: parseFloat(col(columns, '平均搜索后阅读笔记篇数')) || 0,
       readCountAfterSearch: parseInt(col(columns, '搜后阅读量')) || 0,
       multiConversion1: parseInt(col(columns, '新增种草人群', '多转化人数（添加企微+私信咨询）', '多转化人数(添加企微+私信咨询)')) || 0,
-      multiConversionCost1: (parseFloat(col(columns, '新增种草人群成本', '多转化成本（添加企微+私信咨询）', '多转化成本(添加企微+私信咨询)')) || 0) / RMB_TO_AUD_RATE,
+      multiConversionCost1: (parseFloat(col(columns, '新增种草人群成本', '多转化成本（添加企微+私信咨询）', '多转化成本(添加企微+私信咨询)')) || 0) / rate,
       multiConversion2: parseInt(col(columns, '新增深度种草人群', '多转化人数（添加企微成功+私信留资）', '多转化人数(添加企微成功+私信留资)', '多转化人数（私信留资+添加企微成功）', '多转化人数(私信留资+添加企微成功)')) || 0,
-      multiConversionCost2: (parseFloat(col(columns, '新增深度种草人群成本', '多转化成本（添加企微成功+私信留资）', '多转化成本(添加企微成功+私信留资)', '多转化成本（私信留资+添加企微成功）', '多转化成本(私信留资+添加企微成功)')) || 0) / RMB_TO_AUD_RATE,
+      multiConversionCost2: (parseFloat(col(columns, '新增深度种草人群成本', '多转化成本（添加企微成功+私信留资）', '多转化成本(添加企微成功+私信留资)', '多转化成本（私信留资+添加企微成功）', '多转化成本(私信留资+添加企微成功)')) || 0) / rate,
     })
   }
 
   return data.sort((a, b) => a.date.localeCompare(b.date))
+}
+
+// 解析CSV并按每行日期套用历史汇率：先抓取该CSV日期区间的 CNY/AUD 汇率，再换算金额。
+// 汇率接口失败时自动回退到常量汇率（结果仍可用）。
+export async function parseLifeCarDataWithRates(csvText: string): Promise<LifeCarDailyData[]> {
+  // 先用常量汇率解析一遍，仅为获取日期区间（金额此处不会被使用）
+  const prelim = parseLifeCarData(csvText)
+  if (prelim.length === 0) return prelim
+
+  const [start, end] = dateRange(prelim.map(d => d.date))
+  const rateMap = await fetchCnyPerAudRates(start, end)
+  if (rateMap.size === 0) return prelim // 接口失败：已是常量汇率结果，直接复用
+
+  return parseLifeCarData(csvText, rateMap)
 }
 
 // 按月聚合数据

@@ -3,7 +3,7 @@
 import { CartesianGrid, Line, LineChart, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useEffect, useState } from "react"
-import { parseLifeCarData } from "@/lib/lifecar-data-processor"
+import { parseLifeCarDataWithRates } from "@/lib/lifecar-data-processor"
 import { formatDateWithWeekday } from "@/lib/date-utils"
 
 interface ChartData {
@@ -32,9 +32,9 @@ export function RollingAverageRatesChart({ csvContent }: RollingAverageRatesChar
     }
   }, [csvContent])
 
-  const processCSVData = (csvText: string) => {
-        // 使用现有的解析函数
-        const dailyData = parseLifeCarData(csvText)
+  const processCSVData = async (csvText: string) => {
+        // 使用现有的解析函数（按每行日期套用历史汇率）
+        const dailyData = await parseLifeCarDataWithRates(csvText)
         
         // 按日期排序（parseLifeCarData 已经做了排序）
         const sortedData = dailyData
