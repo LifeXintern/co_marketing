@@ -31,6 +31,7 @@ const AccountPerformanceOverview = dynamic(() => import("@/components/account-pe
 
 const DashboardHeader = dynamic(() => import("@/components/dashboard-header").then(mod => mod.DashboardHeader), { ssr: false })
 const DashboardTimeFilter = dynamic(() => import("@/components/dashboard-time-filter").then(mod => mod.DashboardTimeFilter), { ssr: false })
+const NaturalTrafficModule = dynamic(() => import("@/components/natural-traffic-module").then(mod => mod.NaturalTrafficModule), { ssr: false })
 // 移除静态导入，改为动态API调用
 
 // 小王测试数据类型定义
@@ -748,7 +749,7 @@ export default function Home() {
       { id: 'broker', name: 'Broker Distribution', icon: '📊', desc: 'Broker performance analysis' },
       { id: 'cost', name: 'Cost Analysis', icon: '💰', desc: 'Cost comparison analysis' },
       { id: 'weekly-analysis', name: 'Weekly Analysis', icon: '📈', desc: 'Weekly performance insights' },
-      { id: 'activity-heatmap', name: 'Testing Graphs', icon: '🔥', desc: 'Compare same month performance across years' }
+      { id: 'activity-heatmap', name: 'Natural Traffic', icon: '🌱', desc: 'Organic Rednote views & clicks without paid spend' }
     ];
   };
 
@@ -1570,35 +1571,15 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Month-to-Month Comparison Module (activity-heatmap) */}
+                {/* Natural Traffic Module */}
                 <div style={{ display: activeModule === 'activity-heatmap' ? 'block' : 'none' }}>
-                  <div className="max-w-7xl mx-auto mb-4 space-y-6">
-
-                    {/* Check if we have broker data for the components */}
-                    {brokerDataJson.length > 0 ? (
-                      <div className="space-y-6">
-                        {/* Month-to-Month Comparison */}
-                        <div className="glass-card rounded-lg overflow-hidden">
-                          <div className="p-4 border-b border-gray-200">
-                            <h3 className="text-lg font-semibold text-gray-800">Month-to-Month Comparison</h3>
-                          </div>
-                          <MonthlyPatternChart
-                            data={monthlyDataJson}
-                            title="Month-to-Month Comparison"
-                          />
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="text-center bg-white/95 backdrop-blur-xl rounded-lg shadow-xl shadow-purple-500/10 ring-1 ring-purple-500/20 p-12">
-                        <div className="text-6xl mb-6">🔥</div>
-                        <h3 className="text-xl font-semibold text-gray-700 mb-4">No Data Available</h3>
-                        <p className="text-gray-500 mb-4">Please upload both test data and consultation data to view the template analysis.</p>
-                        <div className="text-sm text-gray-400 space-y-1">
-                          <p>1. Upload 小王测试 data (CSV format)</p>
-                          <p>2. Upload 小王测试 data with broker information</p>
-                        </div>
-                      </div>
-                    )}
+                  <div className="max-w-7xl mx-auto mb-4">
+                    <NaturalTrafficModule
+                      xiaowangNotesData={xiaowangTestNotesData}
+                      lifeCarNotesData={lifeCarNotesData}
+                      selectedAccount={selectedAccount}
+                      weeklyTimePeriod={weeklyTimePeriod}
+                    />
                   </div>
                 </div>
 
